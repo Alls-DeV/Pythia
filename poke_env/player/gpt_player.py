@@ -2,6 +2,7 @@ from openai import OpenAI
 from time import sleep
 from openai import RateLimitError
 import os
+from common import PNUMBER1
 
 class GPTPlayer():
     def __init__(self, api_key=""):
@@ -12,7 +13,7 @@ class GPTPlayer():
         self.completion_tokens = 0
         self.prompt_tokens = 0
 
-    def get_LLM_action(self, system_prompt, user_prompt, model='gpt-4o', temperature=0.7, json_format=False, seed=None, stop=[], max_tokens=200, actions=None) -> str:
+    def get_LLM_action(self, system_prompt, user_prompt, model='gpt-4o', temperature=0.7, json_format=False, seed=None, stop=[], max_tokens=200, actions=None, extra_info=None) -> str:
         client = OpenAI(api_key=self.api_key)
         # client = AzureOpenAI()
         try:
@@ -51,6 +52,14 @@ class GPTPlayer():
         # log completion tokens
         self.completion_tokens += response.usage.completion_tokens
         self.prompt_tokens += response.usage.prompt_tokens
+        # Logging
+        if extra_info is not None:
+            with open(f'./alessio/log_{PNUMBER1}', 'a') as f:
+                f.write(extra_info + "\n")
+                f.write("System Prompt:\n" + system_prompt + "\n\n")
+                f.write("User Prompt:\n" + user_prompt + "\n\n")
+                f.write("Output:\n" + outputs + "\n\n")
+                f.write("--" * 50 + "\n")
         if json_format:
             return outputs, True
         return outputs, False
