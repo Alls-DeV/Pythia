@@ -159,6 +159,7 @@ def get_number_turns_faint(mon: Pokemon,
                            return_hp=False,
                            ) -> int:
     # @TODO: power up punch stat boost
+    # I can use the damage calculator
     _, hp_remaining, _, _, turns = sim.calculate_remaining_hp(mon, mon_opp, move, None, boosts1=boosts1, boosts2=boosts2, return_turns = True, team=sim.battle.team, opp_team=sim.battle.opponent_team)
     turns = int(np.ceil(turns))
     # print(mon.species, mon_opp.species, move.id, hp_remaining, turns)

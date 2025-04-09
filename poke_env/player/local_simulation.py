@@ -505,6 +505,7 @@ class LocalSim():
         return
     
     def get_hp_diff(self):
+        # TODO: we can do it better
         # calculate expected hp difference between p1 and p2
         hp_diff = 0.
 
@@ -535,6 +536,7 @@ class LocalSim():
         return hps_str
     
     def get_player_prompt(self, return_actions=False, return_choices=False):
+        # return_actions always True
         if return_actions:
             system_prompt, state_prompt, state_action_prompt, action_prompt_switch, action_prompt_move = self.prompt_translate(self, self.battle, return_actions=return_actions) # add lower case
         elif return_choices:
