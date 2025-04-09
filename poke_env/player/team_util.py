@@ -2,6 +2,7 @@ from poke_env.player.player import Player
 from poke_env.player.baselines import AbyssalPlayer, MaxBasePowerPlayer, OneStepPlayer
 from poke_env.player.random_player import RandomPlayer
 from poke_env.player.llm_player import LLMPlayer
+from poke_env.player.pythia import Pythia
 from poke_env.ps_client.account_configuration import AccountConfiguration
 from poke_env.ps_client.server_configuration import ShowdownServerConfiguration
 
@@ -78,6 +79,18 @@ def get_llm_player(args,
                        save_replays=args.log_dir,
                        prompt_translate=prompt_translate,
                     #    prompt_translate=state_translate2,
+                       device=device,
+                       llm_backend=llm_backend)
+    elif 'pythia' in name:
+        return Pythia(battle_format=battle_format,
+                       api_key=KEY,
+                       backend=backend,
+                       temperature=args.temperature,
+                       log_dir=args.log_dir,
+                       account_configuration=AccountConfiguration(f'{USERNAME}{PNUMBER1}', PASSWORD),
+                       server_configuration=server_config,
+                       save_replays=args.log_dir,
+                       prompt_translate=prompt_translate,
                        device=device,
                        llm_backend=llm_backend)
     else:
