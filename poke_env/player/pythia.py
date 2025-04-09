@@ -38,8 +38,8 @@ class Pythia(Player):
         self,
         battle_format,
         api_key="",
-        backend="deepseek-chat",
-        temperature=1.0,
+        model="deepseek-chat",
+        temperature=0.3,
         log_dir=None,
         team=None,
         save_replays=None,
@@ -49,7 +49,6 @@ class Pythia(Player):
         _use_strat_prompt=False,
         prompt_translate: Callable = state_translate,
         device=0,
-        llm_backend=None,
     ):
 
         super().__init__(
@@ -64,7 +63,7 @@ class Pythia(Player):
         self._battle_last_action: Dict[AbstractBattle, Dict] = {}
         self.completion_tokens = 0
         self.prompt_tokens = 0
-        self.backend = backend
+        self.model = model
         self.temperature = temperature
         self.log_dir = log_dir
         self.api_key = api_key
@@ -98,62 +97,17 @@ class Pythia(Player):
 
         self.last_plan = ""
 
-        if llm_backend is None:
-            if "gpt" in backend:
-                self.llm = GPTPlayer(self.api_key)
-            elif "llama" == backend:
-                self.llm = LLAMAPlayer(device=device)
-            elif "deepseek" in backend:
-                self.llm = DeepSeekPlayer(self.api_key)
-            # TODO: add deepseek/google Player
-            else:
-                raise NotImplementedError("LLM type not implemented:", backend)
+        if "gpt" in model:
+            self.llm = GPTPlayer(self.api_key)
+        elif "llama" == model:
+            self.llm = LLAMAPlayer(device=device)
+        elif "deepseek" in model:
+            self.llm = DeepSeekPlayer(self.api_key)
+        # TODO: add google Player
         else:
-            self.llm = llm_backend
-        self.llm_value = self.llm
-        self.K = K  # for minimax, SC, ToT
+            raise NotImplementedError("LLM type not implemented:", model)
 
-    def get_LLM_action(
-        self,
-        system_prompt,
-        user_prompt,
-        model,
-        temperature=0.7,
-        json_format=False,
-        seed=None,
-        stop=[],
-        max_tokens=200,
-        actions=None,
-        llm=None,
-        extra_info=None,
-    ) -> str:
-        if llm is None:
-            output, _ = self.llm.get_LLM_action(
-                system_prompt,
-                user_prompt,
-                model,
-                temperature,
-                True,
-                seed,
-                stop,
-                max_tokens=max_tokens,
-                actions=actions,
-                extra_info=extra_info,
-            )
-        else:
-            output, _ = llm.get_LLM_action(
-                system_prompt,
-                user_prompt,
-                model,
-                temperature,
-                True,
-                seed,
-                stop,
-                max_tokens=max_tokens,
-                actions=actions,
-                extra_info=extra_info,
-            )
-        return output
+        self.K = K  # for minimax, SC, ToT
 
     def check_all_pokemon(self, pokemon_str: str) -> Pokemon:
         valid_pokemon = None
@@ -222,8 +176,7 @@ class Pythia(Player):
         battle: Battle,
         sim,
         dont_verify=False,
-        actions=None,
-        extra_info=None,
+        log_metadata=None,
     ):
         """Implements chain-of-thought reasoning to decide on an action."""
         next_action = None
@@ -234,16 +187,13 @@ class Pythia(Player):
 
         for i in range(retries):
             try:
-                llm_output = self.get_LLM_action(
+                llm_output = self.llm.get_LLM_action(
                     system_prompt=system_prompt,
                     user_prompt=state_prompt_io,
-                    model=self.backend,
+                    model=self.model,
                     temperature=self.temperature,
                     max_tokens=300,
-                    # stop=["reason"],
-                    json_format=True,
-                    actions=actions,
-                    extra_info=extra_info,
+                    log_metadata=log_metadata,
                 )
 
                 # load when llm does heavylifting for parsing
@@ -315,7 +265,7 @@ class Pythia(Player):
         if next_action is None:
             print("No action found")
             try:
-                print("No action found", llm_action_json, actions, dont_verify)
+                print("No action found", llm_action_json, dont_verify)
             except:
                 pass
             print()
@@ -502,15 +452,13 @@ class Pythia(Player):
                     )
                     cot_prompt = 'Briefly justify your total score, up to 100 words. Then, conclude with the score in the JSON format: {"score": <total_points>}. '
                     state_prompt_io = state_prompt + value_prompt + cot_prompt
-                    llm_output = self.get_LLM_action(
+                    llm_output = self.llm.get_LLM_action(
                         system_prompt=system_prompt,
                         user_prompt=state_prompt_io,
-                        model=self.backend,
+                        model=self.model,
                         temperature=self.temperature,
                         max_tokens=500,
-                        json_format=True,
-                        llm=self.llm_value,
-                        extra_info="SCORE 1-100",
+                        log_metadata="SCORE 1-100",
                     )
                     # load when llm does heavylifting for parsing
                     llm_action_json = json.loads(llm_output)
@@ -577,14 +525,13 @@ class Pythia(Player):
                                 {"choice":"damage calculator"} or {"choice":"minimax"}"""
 
                             state_prompt_io = state_prompt + tool_prompt
-                            llm_output = self.get_LLM_action(
+                            llm_output = self.llm.get_LLM_action(
                                 system_prompt=system_prompt,
                                 user_prompt=state_prompt_io,
-                                model=self.backend,
+                                model=self.model,
                                 temperature=0.6,
                                 max_tokens=100,
-                                json_format=True,
-                                extra_info="DMG. CALC OR MINIMAX",
+                                log_metadata="DMG. CALC OR MINIMAX",
                             )
                             # load when llm does heavylifting for parsing
                             llm_action_json = json.loads(llm_output)
@@ -616,7 +563,7 @@ class Pythia(Player):
                         state_action_prompt_switch,
                         node.simulation.battle,
                         node.simulation,
-                        extra_info="FORCE SWITCH",
+                        log_metadata="FORCE SWITCH",
                     )
                     if len(player_actions) == 0:
                         player_actions.append(action_llm_switch)
@@ -643,7 +590,7 @@ class Pythia(Player):
                     state_action_prompt_move,
                     node.simulation.battle,
                     node.simulation,
-                    extra_info="FORCE MOVE",
+                    log_metadata="FORCE MOVE",
                 )
                 if len(player_actions) == 0:
                     player_actions.append(action_llm_move)
@@ -693,7 +640,7 @@ class Pythia(Player):
                 node.simulation.battle,
                 node.simulation,
                 dont_verify=True,
-                extra_info="OPPO BEST MOVE",
+                log_metadata="OPPO BEST MOVE",
             )
             is_repeat_action_o = np.array(
                 [

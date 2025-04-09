@@ -14,7 +14,7 @@ ALGO_CHOICES = [
     "random",
     "None",
 ]
-BACKEND_CHOICES = [
+MODEL_CHOICES = [
     "gpt-4o-mini",
     "gpt-4o",
     "gpt-4o-2024-05-13",

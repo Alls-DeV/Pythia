@@ -22,7 +22,7 @@ def load_random_team(id=None):
 
 def get_llm_player(
     args,
-    backend: str,
+    model: str,
     prompt_algo: str,
     name: str,
     KEY: str = "",
@@ -75,7 +75,7 @@ def get_llm_player(
         return LLMPlayer(
             battle_format=battle_format,
             api_key=KEY,
-            backend=backend,
+            backend=model,
             temperature=args.temperature,
             prompt_algo=prompt_algo,
             log_dir=args.log_dir,
@@ -91,7 +91,7 @@ def get_llm_player(
         return LLMPlayer(
             battle_format=battle_format,
             api_key=KEY,
-            backend=backend,
+            backend=model,
             temperature=args.temperature,
             prompt_algo="minimax",
             log_dir=args.log_dir,
@@ -109,7 +109,7 @@ def get_llm_player(
         return Pythia(
             battle_format=battle_format,
             api_key=KEY,
-            backend=backend,
+            model=model,
             temperature=args.temperature,
             log_dir=args.log_dir,
             account_configuration=AccountConfiguration(
@@ -119,7 +119,6 @@ def get_llm_player(
             save_replays=args.log_dir,
             prompt_translate=prompt_translate,
             device=device,
-            llm_backend=llm_backend,
         )
     else:
         raise ValueError("Bot not found")

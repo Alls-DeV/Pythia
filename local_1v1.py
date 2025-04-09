@@ -10,21 +10,21 @@ from poke_env.player.team_util import get_llm_player, load_random_team
 Pythia = {
     "name": "pythia",
     "prompt_algo": "None",
-    "backend": "deepseek-chat",
+    "model": "deepseek-chat",
     "device": 0,
 }
 
 Pokechamp = {
     "name": "pokechamp",
     "prompt_algo": "minimax",
-    "backend": "gpt-4o",
+    "model": "gpt-4o",
     "device": 0,
 }
 
 Abyssal = {
     "name": "abyssal",
     "prompt_algo": "abyssal",
-    "backend": "gpt-4o",
+    "model": "gpt-4o",
     "device": 0,
 }
 
@@ -38,7 +38,7 @@ parser.add_argument(
     "--player_prompt_algo", default=PLAYER["prompt_algo"], choices=ALGO_CHOICES
 )
 parser.add_argument(
-    "--player_backend", type=str, default=PLAYER["backend"], choices=BACKEND_CHOICES
+    "--player_model", type=str, default=PLAYER["model"], choices=MODEL_CHOICES
 )
 parser.add_argument("--player_name", type=str, default=PLAYER["name"])
 parser.add_argument("--player_device", type=int, default=PLAYER["device"])
@@ -48,7 +48,7 @@ parser.add_argument(
     "--opponent_prompt_algo", default=OPPONENT["prompt_algo"], choices=ALGO_CHOICES
 )
 parser.add_argument(
-    "--opponent_backend", type=str, default=OPPONENT["backend"], choices=BACKEND_CHOICES
+    "--opponent_model", type=str, default=OPPONENT["model"], choices=MODEL_CHOICES
 )
 parser.add_argument("--opponent_name", type=str, default=OPPONENT["name"])
 parser.add_argument("--opponent_device", type=int, default=OPPONENT["device"])
@@ -64,7 +64,7 @@ args = parser.parse_args()
 async def main():
     player = get_llm_player(
         args,
-        args.player_backend,
+        args.player_model,
         args.player_prompt_algo,
         args.player_name,
         device=args.player_device,
@@ -74,7 +74,7 @@ async def main():
 
     opponent = get_llm_player(
         args,
-        args.opponent_backend,
+        args.opponent_model,
         args.opponent_prompt_algo,
         args.opponent_name,
         device=args.opponent_device,
