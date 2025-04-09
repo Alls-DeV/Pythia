@@ -1,7 +1,8 @@
-import asyncio
-from tqdm import tqdm
-import os
 import argparse
+import asyncio
+import os
+
+from tqdm import tqdm
 
 from common import *
 from poke_env.player.team_util import get_llm_player, load_random_team

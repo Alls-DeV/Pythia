@@ -1,6 +1,7 @@
 """This module defines the PokemonType class, which represents a Pokemon type.
 PokemonTypes are mainly associated with Pokemons and moves.
 """
+
 from __future__ import annotations
 
 from enum import Enum, auto, unique
@@ -60,9 +61,9 @@ class PokemonType(Enum):
         if (
             self == PokemonType.THREE_QUESTION_MARKS
             or type_1 == PokemonType.THREE_QUESTION_MARKS
-            or type_1 == 'STELLAR'
-            or type_2 == 'STELLAR'
-            or self.name == 'STELLAR'
+            or type_1 == "STELLAR"
+            or type_2 == "STELLAR"
+            or self.name == "STELLAR"
         ):
             return 1
 

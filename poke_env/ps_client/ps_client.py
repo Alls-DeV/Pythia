@@ -1,5 +1,5 @@
-"""This module defines a base class for communicating with showdown servers.
-"""
+"""This module defines a base class for communicating with showdown servers."""
+
 import asyncio
 import json
 import logging
@@ -137,7 +137,7 @@ class PSClient:
             if split_messages[0][0].startswith(">battle"):
                 # Battle update
                 # if self.username == 'SimpleHeuristics 1':
-                    # print("pause")
+                # print("pause")
                 await self._handle_battle_message(split_messages)  # type: ignore
             elif split_messages[0][1] == "challstr":
                 # Confirms connection to the server: we can login
@@ -211,7 +211,7 @@ class PSClient:
     async def listen(self):
         """Listen to a showdown websocket and dispatch messages to be handled."""
         self.logger.info("Starting listening to showdown websocket")
-        if 'localhost' not in self.server_configuration.server_url:
+        if "localhost" not in self.server_configuration.server_url:
             self.websocket_url = self.websocket_url_online
         else:
             self.websocket_url = self.websocket_url_local
@@ -362,7 +362,9 @@ class PSClient:
         :return: The websocket url.
         :rtype: str
         """
-        return f"wss://{self.server_configuration.server_url}/showdown/websocket"   # online
+        return (
+            f"wss://{self.server_configuration.server_url}/showdown/websocket"  # online
+        )
 
     @property
     def websocket_url_local(self) -> str:
@@ -373,5 +375,6 @@ class PSClient:
         :return: The websocket url.
         :rtype: str
         """
-        return f"ws://{self.server_configuration.server_url}/showdown/websocket"  # local
-    
+        return (
+            f"ws://{self.server_configuration.server_url}/showdown/websocket"  # local
+        )

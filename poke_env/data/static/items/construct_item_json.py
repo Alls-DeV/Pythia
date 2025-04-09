@@ -1,5 +1,6 @@
-import pandas as pd
 import json
+
+import pandas as pd
 
 X = pd.read_csv("raw.txt", "\t")
 
@@ -13,12 +14,13 @@ for i in range(len(name)):
     new_name = name[i].split(" icon ")[0]
 
     if str(effect[i]) != "nan":
-        item_dict[new_name.lower().replace(" ", "")] = {"name":new_name, "effect":effect[i]}
+        item_dict[new_name.lower().replace(" ", "")] = {
+            "name": new_name,
+            "effect": effect[i],
+        }
 
 print("pause")
 with open("item_effect.json", "w") as f:
     json.dump(item_dict, f, indent=4)
 
 print("pause")
-
-

@@ -1,5 +1,5 @@
-"""This module defines the MoveCategory class, which represents a move category.
-"""
+"""This module defines the MoveCategory class, which represents a move category."""
+
 from enum import Enum, auto, unique
 
 

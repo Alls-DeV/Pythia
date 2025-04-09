@@ -9,9 +9,9 @@ with open("allgen_raw.txt", "r") as f:
     data = f.readlines()
 
 for line in data:
-    line = line.split('\t')
-    s = line[0].lower().replace(' ', '')
-    s = s.translate(str.maketrans('', '', string.punctuation))
+    line = line.split("\t")
+    s = line[0].lower().replace(" ", "")
+    s = s.translate(str.maketrans("", "", string.punctuation))
     move_name_list.append(s)
     move_effect_list.append(line[6])
 

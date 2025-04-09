@@ -1,5 +1,5 @@
-"""This module defines the Effect class, which represents in-game effects.
-"""
+"""This module defines the Effect class, which represents in-game effects."""
+
 from __future__ import annotations
 
 import logging

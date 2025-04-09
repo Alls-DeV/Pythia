@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -12,7 +13,6 @@ from poke_env.environment.pokemon_gender import PokemonGender
 from poke_env.environment.pokemon_type import PokemonType
 from poke_env.environment.status import Status
 from poke_env.environment.z_crystal import Z_CRYSTAL
-import math
 
 
 class Pokemon:
@@ -47,7 +47,7 @@ class Pokemon:
         "_status_counter",
         "_terastallized",
         "_terastallized_type",
-        #"_tera_type"
+        # "_tera_type"
         "_type_1",
         "_type_2",
         "_weightkg",
@@ -92,14 +92,14 @@ class Pokemon:
             "spa": 0,
             "spd": 0,
             "spe": 0,
-            "hp": 0,                             # TODO: for dynamax
+            "hp": 0,  # TODO: for dynamax
         }
         self._current_hp: Optional[int] = 0
         self._effects: Dict[Effect, int] = {}
         self._first_turn: bool = False
         self._terastallized: bool = False
         self._terastallized_type: Optional[PokemonType] = None
-        #self._tera_type : Optional[PokemonType] = None
+        # self._tera_type : Optional[PokemonType] = None
         self._item: Optional[str] = self._data.UNKNOWN_ITEM
         self._last_request: Optional[Dict[str, Any]] = {}
         self._last_details: str = ""
@@ -111,19 +111,17 @@ class Pokemon:
         self._status: Optional[Status] = None
         self._status_counter: int = 0
 
-        with open('poke_env/data/static/gen9/ou/sets_1825.json', 'r') as f:
+        with open("poke_env/data/static/gen9/ou/sets_1825.json", "r") as f:
             sets = json.load(f)
         self._sets = sets
-        
+
         if request_pokemon:
             self.update_from_request(request_pokemon)
         elif details:
             self._update_from_details(details)
         elif species:
             self._update_from_pokedex(species)
-            
-        
-        
+
     def __repr__(self) -> str:
         return self.__str__()
 
@@ -357,17 +355,17 @@ class Pokemon:
         if self._status == Status.TOX:
             self._status_counter = 0
 
-    def terastallize(self, type_: str = ''):
-        if type_ == '' and self._terastallized_type == None:
+    def terastallize(self, type_: str = ""):
+        if type_ == "" and self._terastallized_type == None:
             type_ = self.guess_tera()
-            if type_ == '':
+            if type_ == "":
                 return
-            
-        if type_ != '':
-            self._terastallized_type = PokemonType.from_name(type_)        
+
+        if type_ != "":
+            self._terastallized_type = PokemonType.from_name(type_)
 
         self._terastallized = True
-        
+
     def unterastallize(self):
         # self._terastallized_type = None
         self._terastallized = False
@@ -808,7 +806,7 @@ class Pokemon:
         :rtype: bool
         """
         return self._revealed
-    
+
     @property
     def sets(self) -> Dict:
         return self._sets
@@ -827,8 +825,8 @@ class Pokemon:
         :return: The pokemon's species.
         :rtype: str | None
         """
-        if self._species.lower() == 'keldeoresolute':
-            return 'keldeo'
+        if self._species.lower() == "keldeoresolute":
+            return "keldeo"
         return self._species
 
     @property
@@ -850,71 +848,87 @@ class Pokemon:
         :rtype: Optional[Status]
         """
         return self._status
-    
+
     def calc_indiv_stat(self):
-        
+
         return
-    
-    def guess_tera(self, guess_type='most_likely'):
+
+    def guess_tera(self, guess_type="most_likely"):
         sets = self._sets
         if self.species.lower() not in sets:
-            return ''
+            return ""
 
-        if guess_type == 'most_likely':
+        if guess_type == "most_likely":
             # most likely based on stats
-            set = sets[self.species.lower()]['tera'][0]
-            tera = set['name']
-        
+            set = sets[self.species.lower()]["tera"][0]
+            tera = set["name"]
+
         else:
             # statistically weighted choice (copy paste lol)
             def get_weighted_choice(category, id, size=1):
                 category_dict = sets[self.species.lower()][category]
-                p = np.array([float(category_dict[i]['percentage'])/100. for i in range(len(category_dict))])
+                p = np.array(
+                    [
+                        float(category_dict[i]["percentage"]) / 100.0
+                        for i in range(len(category_dict))
+                    ]
+                )
                 p = p / p.sum()
                 if size > len(category_dict):
                     size = len(category_dict)
                 item = np.random.choice(category_dict, p=p, size=size, replace=False)
-                if category == 'moves':
-                    out = [item[i][id] if item[i][id] != 'Nothing' else '' for i in range(len(item))]
+                if category == "moves":
+                    out = [
+                        item[i][id] if item[i][id] != "Nothing" else ""
+                        for i in range(len(item))
+                    ]
                 else:
                     item = item[0]
                     out = item[id]
-                if id == 'stats':
-                    return out, item['nature']
+                if id == "stats":
+                    return out, item["nature"]
                 return out
-            
-            tera = get_weighted_choice('tera', 'name')
-            
+
+            tera = get_weighted_choice("tera", "name")
+
         return tera
-        
-    def guess_stats(self, guess_type='most_likely'):
-        stat_types = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
+
+    def guess_stats(self, guess_type="most_likely"):
+        stat_types = ["hp", "atk", "def", "spa", "spd", "spe"]
         sets = self._sets
-        if guess_type == 'most_likely':
+        if guess_type == "most_likely":
             # most likely based on statistics
-            set = sets[self.species.lower()]['spreads'][0]
-            spread = set['stats']
-            nature = set['nature']
+            set = sets[self.species.lower()]["spreads"][0]
+            spread = set["stats"]
+            nature = set["nature"]
         else:
             # statistically weighted choice
             def get_weighted_choice(category, id, size=1):
                 category_dict = sets[self.species.lower()][category]
-                p = np.array([float(category_dict[i]['percentage'])/100. for i in range(len(category_dict))])
+                p = np.array(
+                    [
+                        float(category_dict[i]["percentage"]) / 100.0
+                        for i in range(len(category_dict))
+                    ]
+                )
                 p = p / p.sum()
                 if size > len(category_dict):
                     size = len(category_dict)
                 item = np.random.choice(category_dict, p=p, size=size, replace=False)
-                if category == 'moves':
-                    out = [item[i][id] if item[i][id] != 'Nothing' else '' for i in range(len(item))]
+                if category == "moves":
+                    out = [
+                        item[i][id] if item[i][id] != "Nothing" else ""
+                        for i in range(len(item))
+                    ]
                 else:
                     item = item[0]
                     out = item[id]
-                if id == 'stats':
-                    return out, item['nature']
+                if id == "stats":
+                    return out, item["nature"]
                 return out
-            
-            spread, nature = get_weighted_choice('spreads', 'stats')
-        
+
+            spread, nature = get_weighted_choice("spreads", "stats")
+
         return spread, nature
         # # more common natures ordered first
         # nature_common = [
@@ -940,7 +954,7 @@ class Pokemon:
         #     'Sassy',
         #     'Hardy',
         # ]
-        
+
         # # brute force
         # for nature in nature_common:
         #     calculated_stats = {'hp': 0, 'atk': 0, 'def': 0, 'spa': 0, 'spd': 0, 'spe': 0}
@@ -952,92 +966,82 @@ class Pokemon:
         #         for iv in range(31, -1, step=-1):
         #             for ev in range(0, 253, step=4):
         #                 calculated_stats[stat] = self.calc_indiv_stat(stat, iv, ev, nature)
-                            
+
         return
 
-    def calculate_stats(self, ivs=(31,) * 6, evs=(85,) * 6, battle_format='random'):
+    def calculate_stats(self, ivs=(31,) * 6, evs=(85,) * 6, battle_format="random"):
         nature = None
-        if not 'random' in battle_format:
+        if not "random" in battle_format:
             # brute force the iv/ev
             evs, nature = self.guess_stats()
+
         def common_pkmn_stat_calc(stat: int, iv: int, ev: int, level: int):
             return math.floor(((2 * stat + iv + math.floor(ev / 4)) * level) / 100)
 
         new_stats = dict()
-        new_stats['hp'] = common_pkmn_stat_calc(
-                            self._base_stats['hp'],
-                            ivs[0],
-                            evs[0],
-                            self._level
-                        ) + self._level + 10
+        new_stats["hp"] = (
+            common_pkmn_stat_calc(self._base_stats["hp"], ivs[0], evs[0], self._level)
+            + self._level
+            + 10
+        )
 
-        new_stats['atk'] = common_pkmn_stat_calc(
-                            self._base_stats['atk'],
-                            ivs[1],
-                            evs[1],
-                            self._level
-                        ) + 5
+        new_stats["atk"] = (
+            common_pkmn_stat_calc(self._base_stats["atk"], ivs[1], evs[1], self._level)
+            + 5
+        )
 
-        new_stats['def'] = common_pkmn_stat_calc(
-                            self._base_stats['def'],
-                            ivs[2],
-                            evs[2],
-                            self._level
-                        ) + 5
+        new_stats["def"] = (
+            common_pkmn_stat_calc(self._base_stats["def"], ivs[2], evs[2], self._level)
+            + 5
+        )
 
-        new_stats['spa'] = common_pkmn_stat_calc(
-                            self._base_stats['spa'],
-                            ivs[3],
-                            evs[3],
-                            self._level
-                        ) + 5
+        new_stats["spa"] = (
+            common_pkmn_stat_calc(self._base_stats["spa"], ivs[3], evs[3], self._level)
+            + 5
+        )
 
-        new_stats['spd'] = common_pkmn_stat_calc(
-                            self._base_stats['spd'],
-                            ivs[4],
-                            evs[4],
-                            self._level
-                        ) + 5
+        new_stats["spd"] = (
+            common_pkmn_stat_calc(self._base_stats["spd"], ivs[4], evs[4], self._level)
+            + 5
+        )
 
-        new_stats['spe'] = common_pkmn_stat_calc(
-                            self._base_stats['spe'],
-                            ivs[5],
-                            evs[5],
-                            self._level
-                        ) + 5
+        new_stats["spe"] = (
+            common_pkmn_stat_calc(self._base_stats["spe"], ivs[5], evs[5], self._level)
+            + 5
+        )
         if nature is not None:
             # first +, second -
             nature_boosts = {
-                'Adamant': ['atk', 'spa'],
-                'Bashful': [],
-                'Bold': ['def', 'atk'],
-                'Brave': ['atk', 'spe'],
-                'Calm': ['spd', 'atk'],
-                'Careful': ['spd', 'spa'],
-                'Docile': [],
-                'Gentle': ['spd', 'def'],
-                'Hardy': [],
-                'Hasty': ['spe', 'def'],
-                'Impish': ['def', 'spa'],
-                'Jolly': ['spe', 'spa'],
-                'Lax': ['def', 'spd'],
-                'Lonely': ['atk', 'def'],
-                'Mild': ['spa', 'def'],
-                'Modest': ['spa', 'atk'],
-                'Naive': ['spe', 'spd'],
-                'Naughty': ['atk', 'spd'],
-                'Quiet': ['spa', 'spe'],
-                'Quirky': [],
-                'Rash': ['spa', 'spd'],
-                'Relaxed': ['def', 'spe'],
-                'Sassy': ['spd', 'spe'],
-                'Serious': [],
-                'Timid': ['spe', 'atk'],
+                "Adamant": ["atk", "spa"],
+                "Bashful": [],
+                "Bold": ["def", "atk"],
+                "Brave": ["atk", "spe"],
+                "Calm": ["spd", "atk"],
+                "Careful": ["spd", "spa"],
+                "Docile": [],
+                "Gentle": ["spd", "def"],
+                "Hardy": [],
+                "Hasty": ["spe", "def"],
+                "Impish": ["def", "spa"],
+                "Jolly": ["spe", "spa"],
+                "Lax": ["def", "spd"],
+                "Lonely": ["atk", "def"],
+                "Mild": ["spa", "def"],
+                "Modest": ["spa", "atk"],
+                "Naive": ["spe", "spd"],
+                "Naughty": ["atk", "spd"],
+                "Quiet": ["spa", "spe"],
+                "Quirky": [],
+                "Rash": ["spa", "spd"],
+                "Relaxed": ["def", "spe"],
+                "Sassy": ["spd", "spe"],
+                "Serious": [],
+                "Timid": ["spe", "atk"],
             }
             buff, nerf = nature_boosts[nature]
-            new_stats[buff] = math.floor(1.1*new_stats[buff])
-            new_stats[nerf] = math.floor(0.9*new_stats[nerf])
-        
+            new_stats[buff] = math.floor(1.1 * new_stats[buff])
+            new_stats[nerf] = math.floor(0.9 * new_stats[nerf])
+
         new_stats = {k: int(v) for k, v in new_stats.items()}
         return new_stats
 

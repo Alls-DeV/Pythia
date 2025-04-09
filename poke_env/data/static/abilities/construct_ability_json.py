@@ -1,5 +1,6 @@
-import pandas as pd
 import json
+
+import pandas as pd
 
 X = pd.read_csv("raw.txt", "\t")
 
@@ -17,5 +18,3 @@ with open("ability_effect.json", "w") as f:
     json.dump(ability_dict, f, indent=4)
 
 print("pause")
-
-

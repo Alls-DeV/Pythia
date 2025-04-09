@@ -1,29 +1,29 @@
 import ast
-from copy import copy, deepcopy
 import datetime
 import json
 import os
 import random
 import sys
+import time
+from copy import copy, deepcopy
+from difflib import get_close_matches
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
+
+from poke_env.data.gen_data import GenData
 from poke_env.environment.abstract_battle import AbstractBattle
 from poke_env.environment.battle import Battle
 from poke_env.environment.double_battle import DoubleBattle
+from poke_env.environment.move import Move
 from poke_env.environment.move_category import MoveCategory
 from poke_env.environment.pokemon import Pokemon
 from poke_env.environment.side_condition import SideCondition
-from poke_env.player.player import Player, BattleOrder
-from typing import Callable, Dict, List, Optional, Tuple, Union
-from poke_env.environment.move import Move
-import time
-import json
-from poke_env.data.gen_data import GenData
-from poke_env.player.gpt_player import GPTPlayer
 from poke_env.player.deepseek_player import DeepSeekPlayer
+from poke_env.player.gpt_player import GPTPlayer
 from poke_env.player.llama_player import LLAMAPlayer
 from poke_env.player.local_simulation import LocalSim, SimNode
-from difflib import get_close_matches
+from poke_env.player.player import BattleOrder, Player
 from poke_env.player.prompts import (
     get_number_turns_faint,
     get_status_num_turns_fnt,

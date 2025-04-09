@@ -1,5 +1,6 @@
 import os
 from abc import ABC, abstractmethod
+from difflib import get_close_matches
 from logging import Logger
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
@@ -10,10 +11,10 @@ from poke_env.environment.pokemon import Pokemon
 from poke_env.environment.side_condition import STACKABLE_CONDITIONS, SideCondition
 from poke_env.environment.weather import Weather
 
-from difflib import get_close_matches
 
 def sanitize_string(s: str) -> str:
-    return ''.join(char for char in s if char.isalnum()).lower()
+    return "".join(char for char in s if char.isalnum()).lower()
+
 
 class AbstractBattle(ABC):
     MESSAGES_TO_IGNORE = {
@@ -175,8 +176,6 @@ class AbstractBattle(ABC):
         self._team: Dict[str, Pokemon] = {}
         self._opponent_team: Dict[str, Pokemon] = {}
 
-
-
     def get_pokemon(
         self,
         identifier: str,
@@ -207,9 +206,12 @@ class AbstractBattle(ABC):
         cutoff = 1
         if identifier[3] != " ":
             identifier = identifier[:2] + identifier[3:]
-        dash_mons = {'ho-oh', 'chi-yu', 'porygon-z', 'ting-lu', 'kommo-o'}
-        if '-' in identifier and len(dash_mons.intersection({identifier[4:].lower()})) == 0:
-            identifier = identifier.split('-')[0]
+        dash_mons = {"ho-oh", "chi-yu", "porygon-z", "ting-lu", "kommo-o"}
+        if (
+            "-" in identifier
+            and len(dash_mons.intersection({identifier[4:].lower()})) == 0
+        ):
+            identifier = identifier.split("-")[0]
         if not force_self_team and not force_opp_team:
             if identifier in self._team.keys():
                 return self._team[identifier]
@@ -217,16 +219,24 @@ class AbstractBattle(ABC):
                 return self._opponent_team[identifier]
             else:
                 for mon in self._team.keys():
-                    if sanitize_string(identifier) in sanitize_string(mon) or sanitize_string(mon) in sanitize_string(identifier):
+                    if sanitize_string(identifier) in sanitize_string(
+                        mon
+                    ) or sanitize_string(mon) in sanitize_string(identifier):
                         return self._team[mon]
                 for mon in self._opponent_team.keys():
-                    if sanitize_string(identifier) in sanitize_string(mon) or sanitize_string(mon) in sanitize_string(identifier):
+                    if sanitize_string(identifier) in sanitize_string(
+                        mon
+                    ) or sanitize_string(mon) in sanitize_string(identifier):
                         return self._opponent_team[mon]
-            closest = get_close_matches(identifier, list(self._team.keys()), n=1, cutoff=cutoff)
+            closest = get_close_matches(
+                identifier, list(self._team.keys()), n=1, cutoff=cutoff
+            )
             if len(closest) > 0:
                 identifier = closest[0]
                 return self._team[identifier]
-            closest = get_close_matches(identifier, list(self._opponent_team.keys()), n=1, cutoff=cutoff)
+            closest = get_close_matches(
+                identifier, list(self._opponent_team.keys()), n=1, cutoff=cutoff
+            )
             if len(closest) > 0:
                 identifier = closest[0]
                 return self._opponent_team[identifier]
@@ -234,9 +244,13 @@ class AbstractBattle(ABC):
             if identifier in self._team:
                 return self._team[identifier]
             for mon in self._team.keys():
-                if sanitize_string(identifier) in sanitize_string(mon) or sanitize_string(mon) in sanitize_string(identifier):
+                if sanitize_string(identifier) in sanitize_string(
+                    mon
+                ) or sanitize_string(mon) in sanitize_string(identifier):
                     return self._team[mon]
-            closest = get_close_matches(identifier, list(self._team.keys()), n=1, cutoff=cutoff)
+            closest = get_close_matches(
+                identifier, list(self._team.keys()), n=1, cutoff=cutoff
+            )
             if len(closest) > 0:
                 identifier = closest[0]
                 return self._team[identifier]
@@ -244,9 +258,13 @@ class AbstractBattle(ABC):
             if identifier in self._opponent_team:
                 return self._opponent_team[identifier]
             for mon in self._opponent_team.keys():
-                if sanitize_string(identifier) in sanitize_string(mon) or sanitize_string(mon) in sanitize_string(identifier):
+                if sanitize_string(identifier) in sanitize_string(
+                    mon
+                ) or sanitize_string(mon) in sanitize_string(identifier):
                     return self._opponent_team[mon]
-            closest = get_close_matches(identifier, list(self._opponent_team.keys()), n=1, cutoff=cutoff)
+            closest = get_close_matches(
+                identifier, list(self._opponent_team.keys()), n=1, cutoff=cutoff
+            )
             if len(closest) > 0:
                 identifier = closest[0]
                 return self._opponent_team[identifier]
@@ -431,7 +449,11 @@ class AbstractBattle(ABC):
 
         if split_message[1] in self.MESSAGES_TO_IGNORE:
             return
-        elif split_message[1] in ["drag", "switch"] and not "volt" in split_message[1] and not "voltswitch" in split_message:
+        elif (
+            split_message[1] in ["drag", "switch"]
+            and not "volt" in split_message[1]
+            and not "voltswitch" in split_message
+        ):
             pokemon, details, hp_status = split_message[2:5]
             self.switch(pokemon, details, hp_status)
         elif split_message[1] == "-damage":
@@ -816,9 +838,9 @@ class AbstractBattle(ABC):
             mon = Pokemon(details=details, gen=self._data.gen)
             self._teampreview_opponent_team.add(mon)
         else:
-            pokemon = player + 'a: ' + details.split(',')[0]
+            pokemon = player + "a: " + details.split(",")[0]
             mon = self.get_pokemon(pokemon, details=details, force_self_team=True)
-            mon.set_hp_status('100/100')
+            mon.set_hp_status("100/100")
             mon._update_from_details(details)
             self._available_switches.append(mon)
 

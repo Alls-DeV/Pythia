@@ -39,7 +39,6 @@ class Battle(AbstractBattle):
         self._dynamax_intent: bool = False
         self._tera_intent: bool = False
 
-
     def clear_all_boosts(self):
         if self.active_pokemon is not None:
             self.active_pokemon.clear_boosts()
@@ -150,12 +149,16 @@ class Battle(AbstractBattle):
         if identifier == self._player_role:
             if self.active_pokemon:
                 self.active_pokemon.switch_out()
-            pokemon = self.get_pokemon(pokemon_str, details=details, force_self_team=True)
+            pokemon = self.get_pokemon(
+                pokemon_str, details=details, force_self_team=True
+            )
         else:
             if self.opponent_active_pokemon:
                 self.opponent_active_pokemon.switch_out()
 
-            pokemon = self.get_pokemon(pokemon_str, details=details, force_opp_team=True)
+            pokemon = self.get_pokemon(
+                pokemon_str, details=details, force_opp_team=True
+            )
 
         pokemon.switch_in(details=details)
         pokemon.set_hp_status(hp_status)

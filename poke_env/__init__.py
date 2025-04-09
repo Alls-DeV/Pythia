@@ -1,6 +1,7 @@
-"""poke_env module init.
-"""
+"""poke_env module init."""
+
 import logging
+
 import poke_env.environment as environment
 import poke_env.exceptions as exceptions
 import poke_env.player as player
