@@ -8,7 +8,7 @@ from poke_env.player.team_util import get_llm_player, load_random_team
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--temperature", type=float, default=0.3)
-parser.add_argument("--prompt_algo", default="minimax", choices=prompt_algos)
+parser.add_argument("--prompt_algo", default="minimax", choices=ALGO_CHOICES)
 parser.add_argument("--battle_format", default="gen9ou", choices=["gen8randombattle", "gen8ou", "gen9ou", "gen9randombattle"])
 parser.add_argument("--backend", type=str, default="gpt-4o", choices=["gpt-4o-mini", "gpt-4o", "gpt-4o-2024-05-13", "llama", 'None'])
 parser.add_argument("--log_dir", type=str, default="./battle_log/ladder")

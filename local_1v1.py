@@ -6,23 +6,47 @@ import argparse
 from common import *
 from poke_env.player.team_util import get_llm_player, load_random_team
 
+Pythia = {
+    "name": "pythia",
+    "prompt_algo": 'None',
+    "backend": "deepseek-chat",
+    "device": 0
+}
+
+Pokechamp = {
+    "name": "pokechamp",
+    "prompt_algo": "minimax",
+    "backend": "gpt-4o",
+    "device": 0
+}
+
+Abyssal = {
+    "name": "abyssal",
+    "prompt_algo": "abyssal",
+    "backend": "gpt-4o",
+    "device": 0
+}
+
+PLAYER = Pythia
+OPPONENT = Abyssal
+
 parser = argparse.ArgumentParser()
 
 # Player arguments
-parser.add_argument("--player_prompt_algo", default="minimax", choices=prompt_algos)
-parser.add_argument("--player_backend", type=str, default="gpt-4o", choices=["gpt-4o-mini", "gpt-4o", "gpt-4o-2024-05-13", "llama", 'None'])
-parser.add_argument("--player_name", type=str, default='pokechamp', choices=['pokechamp', 'pokellmon', 'one_step', 'abyssal', 'max_power', 'random'])
-parser.add_argument("--player_device", type=int, default=0)
+parser.add_argument("--player_prompt_algo", default=PLAYER["prompt_algo"], choices=ALGO_CHOICES)
+parser.add_argument("--player_backend", type=str, default=PLAYER["backend"], choices=BACKEND_CHOICES)
+parser.add_argument("--player_name", type=str, default=PLAYER["name"])
+parser.add_argument("--player_device", type=int, default=PLAYER["device"])
 
 # Opponent arguments
-parser.add_argument("--opponent_prompt_algo", default="io", choices=prompt_algos)
-parser.add_argument("--opponent_backend", type=str, default="gpt-4o", choices=["gpt-4o-mini", "gpt-4o", "gpt-4o-2024-05-13", "llama", 'None'])
-parser.add_argument("--opponent_name", type=str, default='pokellmon', choices=['pokechamp', 'pokellmon', 'one_step', 'abyssal', 'max_power', 'random'])
-parser.add_argument("--opponent_device", type=int, default=0)
+parser.add_argument("--opponent_prompt_algo", default=OPPONENT["prompt_algo"], choices=ALGO_CHOICES)
+parser.add_argument("--opponent_backend", type=str, default=OPPONENT["backend"], choices=BACKEND_CHOICES)
+parser.add_argument("--opponent_name", type=str, default=OPPONENT["name"])
+parser.add_argument("--opponent_device", type=int, default=OPPONENT["device"])
 
 # Shared arguments
 parser.add_argument("--temperature", type=float, default=0.3)
-parser.add_argument("--battle_format", default="gen9ou", choices=["gen8randombattle", "gen8ou", "gen9ou", "gen9randombattle"])
+parser.add_argument("--battle_format", default="gen9ou", choices=BATTLE_FORMAT_CHOICES)
 parser.add_argument("--log_dir", type=str, default="./battle_log/one_vs_one")
 
 args = parser.parse_args()
@@ -44,19 +68,16 @@ async def main():
                             PNUMBER1=PNUMBER1,  # for name uniqueness locally
                             battle_format=args.battle_format)
 
+    player_team_id = 18
+    opponent_team_id = 19
     if not 'random' in args.battle_format:
-        player.update_team(load_random_team())
-        opponent.update_team(load_random_team())
+        player.update_team(load_random_team(player_team_id))
+        opponent.update_team(load_random_team(opponent_team_id))
 
-    # play against bot for five battles
-    N = 5
+    N = 1
     pbar = tqdm(total=N)
     for i in range(N):
-        x = np.random.randint(0, 100)
-        if x > 50:
-            await player.battle_against(opponent, n_battles=1)
-        else:
-            await opponent.battle_against(player, n_battles=1)
+        await player.battle_against(opponent, n_battles=1)
         if not 'random' in args.battle_format:
             player.update_team(load_random_team())
             opponent.update_team(load_random_team())
