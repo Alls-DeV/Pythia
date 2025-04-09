@@ -1,0 +1,29 @@
+Magmortar @ Heavy-Duty Boots
+Ability: Flame Body
+EVs: 4 Def / 252 SpA / 252 Spe
+Tera Type: Ground
+Timid Nature
+- Fire Blast
+- Scorching Sands
+- Solar Beam
+- Knock Off
+
+Serperior @ Light Clay
+Ability: Contrary
+EVs: 252 SpA / 4 SpD / 252 Spe
+Tera Type: Electric
+Timid Nature
+- Leaf Storm
+- Glare
+- Reflect
+- Light Screen
+
+Feraligatr @ Life Orb
+Ability: Sheer Force
+EVs: 252 Atk / 4 SpD / 252 Spe
+Tera Type: Dark
+Jolly Nature
+- Swords Dance
+- Aqua Jet
+- Ice Punch
+- Crunch

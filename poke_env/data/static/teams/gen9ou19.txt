@@ -1,0 +1,30 @@
+Vaporeon @ Leftovers
+Ability: Water Absorb
+EVs: 252 HP / 252 Def / 4 SpD
+Tera Type: Poison
+Bold Nature
+- Scald
+- Wish
+- Protect
+- Flip Turn
+
+Typhlosion @ Choice Specs
+Ability: Flash Fire
+EVs: 4 Def / 252 SpA / 252 Spe
+IVs: 0 Atk
+Tera Type: Fire
+Timid Nature
+- Eruption
+- Fire Blast
+- Focus Blast
+- Scorching Sands
+
+Sceptile @ Choice Specs
+Ability: Overgrow
+EVs: 252 SpA / 4 SpD / 252 Spe
+Tera Type: Dragon
+Timid Nature
+- Leaf Storm
+- Giga Drain
+- Focus Blast
+- Dragon Pulse
