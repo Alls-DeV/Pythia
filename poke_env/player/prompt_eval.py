@@ -248,7 +248,7 @@ async def offline_one_vs_one(
             )
             p2 = LLMPlayer(
                 battle_format=args.battle_format,
-                backend=args.backend,
+                model=args.backend,
                 temperature=args.temperature,
                 prompt_algo=args.prompt_algo,
                 log_dir=args.log_dir,
@@ -331,7 +331,7 @@ async def one_vs_one(args, PNUMBER1, total=1, compare_bots=False):
             )
             p2 = LLMPlayer(
                 battle_format=args.battle_format,
-                backend=args.backend,
+                model=args.backend,
                 temperature=args.temperature,
                 prompt_algo=args.prompt_algo,
                 log_dir=args.log_dir,

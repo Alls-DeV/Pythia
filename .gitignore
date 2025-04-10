@@ -7,4 +7,5 @@
 __pycache__
 .vscode
 battle_log/
-alessio/
+battle_prompts/
+config.py

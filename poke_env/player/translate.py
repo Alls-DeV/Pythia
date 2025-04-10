@@ -151,7 +151,7 @@ async def add_battle(
     # Create player and battle simulation
     llm_player = LLMPlayer(
         battle_format=format,
-        backend="gpt",
+        model="gpt",
         temperature=1.0,
         prompt_algo="io",
         account_configuration=AccountConfiguration(p1_username, ""),

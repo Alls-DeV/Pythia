@@ -5,6 +5,7 @@ import os
 from tqdm import tqdm
 
 from common import *
+from poke_env.player.player import Player
 from poke_env.player.team_util import get_llm_player, load_random_team
 
 Pythia = {
@@ -24,12 +25,12 @@ Pokechamp = {
 Abyssal = {
     "name": "abyssal",
     "prompt_algo": "abyssal",
-    "model": "gpt-4o",
+    "model": "None",
     "device": 0,
 }
 
 PLAYER = Pythia
-OPPONENT = Abyssal
+OPPONENT = Pokechamp
 
 parser = argparse.ArgumentParser()
 
@@ -62,7 +63,7 @@ args = parser.parse_args()
 
 
 async def main():
-    player = get_llm_player(
+    player: Player = get_llm_player(
         args,
         args.player_model,
         args.player_prompt_algo,
@@ -72,7 +73,7 @@ async def main():
         battle_format=args.battle_format,
     )
 
-    opponent = get_llm_player(
+    opponent: Player = get_llm_player(
         args,
         args.opponent_model,
         args.opponent_prompt_algo,
@@ -83,7 +84,7 @@ async def main():
     )
 
     player_team_id = 18
-    opponent_team_id = 19
+    opponent_team_id = 18
     if not "random" in args.battle_format:
         player.update_team(load_random_team(player_team_id))
         opponent.update_team(load_random_team(opponent_team_id))
@@ -97,6 +98,32 @@ async def main():
             opponent.update_team(load_random_team())
         pbar.set_description(f"{player.win_rate*100:.2f}%")
         pbar.update(1)
+
+        for trainer in [player, opponent]:
+            if "gpt" in trainer.model or "deepseek" in trainer.model:
+                with open(f"./battle_prompts/{PNUMBER1}/log_{trainer.model}", "a") as f:
+                    f.write(
+                        f"total explored nodes in the entire game: {trainer.total_explored_nodes}\n"
+                    )
+                    f.write(
+                        f"total time spent on choosing move: {trainer.choose_move_time}\n"
+                    )
+                    f.write(
+                        f"total time spent on llm thinking: {trainer.llm_thinking_time}\n"
+                    )
+                    f.write(
+                        f"diff choose move - llm thinking: {trainer.choose_move_time - trainer.llm_thinking_time}\n"
+                    )
+                    f.write(
+                        f"total completion tokens: {trainer.llm.completion_tokens}\n"
+                    )
+                    f.write(f"total prompt tokens: {trainer.llm.prompt_tokens}\n")
+                trainer.total_explored_nodes = 0
+                trainer.choose_move_time = 0
+                trainer.llm_thinking_time = 0
+                trainer.llm.completion_tokens = 0
+                trainer.llm.prompt_tokens = 0
+
     print(f"player winrate: {player.win_rate*100}")
 
 

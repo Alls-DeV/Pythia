@@ -75,7 +75,7 @@ def get_llm_player(
         return LLMPlayer(
             battle_format=battle_format,
             api_key=KEY,
-            backend=model,
+            model=model,
             temperature=args.temperature,
             prompt_algo=prompt_algo,
             log_dir=args.log_dir,
@@ -91,7 +91,7 @@ def get_llm_player(
         return LLMPlayer(
             battle_format=battle_format,
             api_key=KEY,
-            backend=model,
+            model=model,
             temperature=args.temperature,
             prompt_algo="minimax",
             log_dir=args.log_dir,

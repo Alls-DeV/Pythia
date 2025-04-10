@@ -11,6 +11,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
+from common import PNUMBER1
 from poke_env.data.gen_data import GenData
 from poke_env.environment.abstract_battle import AbstractBattle
 from poke_env.environment.battle import Battle
@@ -19,7 +20,6 @@ from poke_env.environment.move import Move
 from poke_env.environment.move_category import MoveCategory
 from poke_env.environment.pokemon import Pokemon
 from poke_env.environment.side_condition import SideCondition
-from poke_env.player.deepseek_player import DeepSeekPlayer
 from poke_env.player.gpt_player import GPTPlayer
 from poke_env.player.llama_player import LLAMAPlayer
 from poke_env.player.local_simulation import LocalSim, SimNode
@@ -97,17 +97,19 @@ class Pythia(Player):
 
         self.last_plan = ""
 
-        if "gpt" in model:
+        if "gpt" in model or "deepseek" in model:
             self.llm = GPTPlayer(self.api_key)
         elif "llama" == model:
             self.llm = LLAMAPlayer(device=device)
-        elif "deepseek" in model:
-            self.llm = DeepSeekPlayer(self.api_key)
         # TODO: add google Player
         else:
             raise NotImplementedError("LLM type not implemented:", model)
 
         self.K = K  # for minimax, SC, ToT
+
+        self.choose_move_time = 0
+        self.llm_thinking_time = 0
+        self.total_explored_nodes = 0
 
     def check_all_pokemon(self, pokemon_str: str) -> Pokemon:
         valid_pokemon = None
@@ -159,7 +161,25 @@ class Pythia(Player):
 
         retries = 2
         try:
-            return self.tree_search(retries, battle)
+            start_time = time.time()
+            action, explored_nodes = self.tree_search(retries, battle)
+            end_time = time.time()
+
+            with open(f"./battle_prompts/{PNUMBER1}/log_{self.model}", "a") as f:
+                f.write(f"explored nodes to find the best move: {explored_nodes}\n")
+                f.write(f"total time to choose move: {end_time - start_time}\n")
+                f.write(f"llm thinking time: {self.llm.time_to_respond}\n")
+                f.write(
+                    f"overhead time: {end_time - start_time - self.llm.time_to_respond}\n"
+                )
+                f.write("~~" * 50 + "\n\n")
+
+            self.choose_move_time += end_time - start_time
+            self.llm_thinking_time += self.llm.time_to_respond
+            self.total_explored_nodes += explored_nodes
+            self.llm.time_to_respond = 0
+
+            return action
         except Exception as e:
             print("minimax step failed. Using dmg calc")
             print(f"Exception: {e}", "passed")
@@ -403,7 +423,7 @@ class Pythia(Player):
 
         return score
 
-    def tree_search(self, retries, battle, sim=None, return_opp=False) -> BattleOrder:
+    def tree_search(self, retries, battle, sim=None) -> Tuple[BattleOrder, int]:
         # generate local simulation
         root = SimNode(
             battle,
@@ -421,9 +441,11 @@ class Pythia(Player):
             sim=sim,
         )
         q = [root]
+        explored_nodes = 0
         # create node and add to q B times
         while len(q) != 0:
             node = q.pop(0)
+            explored_nodes += 1
             # choose node for expansion
             # generate B actions
             player_actions = []
@@ -450,7 +472,8 @@ class Pythia(Player):
                         + "Subtract points based on the effectiveness of the opponent's current moves, especially if they have a faster speed."
                         + "Remove points for each pokemon remaining on the opponent's team, weighted by their strength.\n"
                     )
-                    cot_prompt = 'Briefly justify your total score, up to 100 words. Then, conclude with the score in the JSON format: {"score": <total_points>}. '
+                    # cot_prompt = 'Briefly justify your total score, up to 100 words. Then, conclude with the score in the JSON format: {"score": <total_points>}. '
+                    cot_prompt = 'Answer with the score in the JSON format: {"score": <total_points>}. '
                     state_prompt_io = state_prompt + value_prompt + cot_prompt
                     llm_output = self.llm.get_LLM_action(
                         system_prompt=system_prompt,
@@ -458,7 +481,7 @@ class Pythia(Player):
                         model=self.model,
                         temperature=self.temperature,
                         max_tokens=500,
-                        log_metadata="SCORE 1-100",
+                        log_metadata=f"SCORE 1-100, depth {node.depth}",
                     )
                     # load when llm does heavylifting for parsing
                     llm_action_json = json.loads(llm_output)
@@ -531,16 +554,13 @@ class Pythia(Player):
                                 model=self.model,
                                 temperature=0.6,
                                 max_tokens=100,
-                                log_metadata="DMG. CALC OR MINIMAX",
+                                log_metadata=f"DMG. CALC OR MINIMAX, depth {node.depth}",
                             )
                             # load when llm does heavylifting for parsing
                             llm_action_json = json.loads(llm_output)
                             if "choice" in llm_action_json.keys():
                                 if llm_action_json["choice"] != "minimax":
-                                    if return_opp:
-                                        # use tool to save time and llm when move makes bigger difference
-                                        return dmg_calc_out, action_opp
-                                    return dmg_calc_out
+                                    return dmg_calc_out, explored_nodes
                         except:
                             print("defaulting to minimax")
                     player_actions.append(dmg_calc_out)
@@ -563,7 +583,7 @@ class Pythia(Player):
                         state_action_prompt_switch,
                         node.simulation.battle,
                         node.simulation,
-                        log_metadata="FORCE SWITCH",
+                        log_metadata=f"FORCE SWITCH, depth {node.depth}",
                     )
                     if len(player_actions) == 0:
                         player_actions.append(action_llm_switch)
@@ -590,7 +610,7 @@ class Pythia(Player):
                     state_action_prompt_move,
                     node.simulation.battle,
                     node.simulation,
-                    log_metadata="FORCE MOVE",
+                    log_metadata=f"FORCE MOVE, depth {node.depth}",
                 )
                 if len(player_actions) == 0:
                     player_actions.append(action_llm_move)
@@ -640,7 +660,7 @@ class Pythia(Player):
                 node.simulation.battle,
                 node.simulation,
                 dont_verify=True,
-                log_metadata="OPPO BEST MOVE",
+                log_metadata=f"OPPO BEST MOVE, depth {node.depth}",
             )
             is_repeat_action_o = np.array(
                 [
@@ -695,9 +715,7 @@ class Pythia(Player):
             )
 
         action, _, action_opp = get_tree_action(root)
-        if return_opp:
-            return action, action_opp
-        return action
+        return action, explored_nodes
 
     def choose_max_damage_move(self, battle: Battle):
         if battle.available_moves:

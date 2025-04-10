@@ -188,7 +188,7 @@ async def data_battle(
         # create player
         llm_player = LLMPlayer(
             battle_format=format,
-            backend="gpt",
+            model="gpt",
             temperature=1.0,
             prompt_algo="io",
             account_configuration=AccountConfiguration(username, ""),

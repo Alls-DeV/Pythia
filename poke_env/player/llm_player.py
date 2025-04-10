@@ -11,6 +11,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
+from common import PNUMBER1
 from poke_env.data.gen_data import GenData
 from poke_env.environment.abstract_battle import AbstractBattle
 from poke_env.environment.battle import Battle
@@ -38,7 +39,7 @@ class LLMPlayer(Player):
         self,
         battle_format,
         api_key="",
-        backend="gpt-4-1106-preview",
+        model="gpt-4-1106-preview",
         temperature=1.0,
         prompt_algo="io",
         log_dir=None,
@@ -65,7 +66,7 @@ class LLMPlayer(Player):
         self._battle_last_action: Dict[AbstractBattle, Dict] = {}
         self.completion_tokens = 0
         self.prompt_tokens = 0
-        self.backend = backend
+        self.model = model
         self.temperature = temperature
         self.log_dir = log_dir
         self.api_key = api_key
@@ -104,55 +105,20 @@ class LLMPlayer(Player):
         self.last_plan = ""
 
         if llm_backend is None:
-            if "gpt" in backend:
+            if "gpt" in model:
                 self.llm = GPTPlayer(self.api_key)
-            elif "llama" == backend:
+            elif "llama" == model:
                 self.llm = LLAMAPlayer(device=device)
             else:
-                raise NotImplementedError("LLM type not implemented:", backend)
+                raise NotImplementedError("LLM type not implemented:", model)
         else:
             self.llm = llm_backend
         self.llm_value = self.llm
         self.K = K  # for minimax, SC, ToT
 
-    def get_LLM_action(
-        self,
-        system_prompt,
-        user_prompt,
-        model,
-        temperature=0.7,
-        json_format=False,
-        seed=None,
-        stop=[],
-        max_tokens=200,
-        actions=None,
-        llm=None,
-    ) -> str:
-        if llm is None:
-            output, _ = self.llm.get_LLM_action(
-                system_prompt,
-                user_prompt,
-                model,
-                temperature,
-                True,
-                seed,
-                stop,
-                max_tokens=max_tokens,
-                actions=actions,
-            )
-        else:
-            output, _ = llm.get_LLM_action(
-                system_prompt,
-                user_prompt,
-                model,
-                temperature,
-                True,
-                seed,
-                stop,
-                max_tokens=max_tokens,
-                actions=actions,
-            )
-        return output
+        self.choose_move_time = 0
+        self.llm_thinking_time = 0
+        self.total_explored_nodes = 0
 
     def check_all_pokemon(self, pokemon_str: str) -> Pokemon:
         valid_pokemon = None
@@ -278,7 +244,7 @@ class LLMPlayer(Player):
                     llm_output1 = self.get_LLM_action(
                         system_prompt=system_prompt,
                         user_prompt=state_prompt_tot_1,
-                        model=self.backend,
+                        model=self.model,
                         temperature=self.temperature,
                         max_tokens=200,
                         json_format=True,
@@ -302,7 +268,7 @@ class LLMPlayer(Player):
                         user_prompt=state_prompt_tot_2.replace(
                             "[OPTIONS]", llm_output1
                         ),
-                        model=self.backend,
+                        model=self.model,
                         temperature=self.temperature,
                         max_tokens=100,
                         json_format=True,
@@ -340,7 +306,28 @@ class LLMPlayer(Player):
 
         elif self.prompt_algo == "minimax":
             try:
-                return self.tree_search(retries, battle)
+                # return self.tree_search(retries, battle)
+
+                start_time = time.time()
+                action, explored_nodes = self.tree_search(retries, battle)
+                end_time = time.time()
+
+                with open(f"./battle_prompts/{PNUMBER1}/log_{self.model}", "a") as f:
+                    f.write(f"explored nodes to find the best move: {explored_nodes}\n")
+                    f.write(f"total time to choose move: {end_time - start_time}\n")
+                    f.write(f"llm thinking time: {self.llm.time_to_respond}\n")
+                    f.write(
+                        f"overhead time: {end_time - start_time - self.llm.time_to_respond}\n"
+                    )
+                    f.write("~~" * 50 + "\n\n")
+
+                self.choose_move_time += end_time - start_time
+                self.llm_thinking_time += self.llm.time_to_respond
+                self.total_explored_nodes += explored_nodes
+                self.llm.time_to_respond = 0
+
+                return action
+
             except Exception as e:
                 print("minimax step failed. Using dmg calc")
                 print(f"Exception: {e}", "passed")
@@ -357,6 +344,7 @@ class LLMPlayer(Player):
         battle: Battle,
         sim,
         dont_verify=False,
+        log_metadata=None,
         actions=None,
     ):
         next_action = None
@@ -367,15 +355,13 @@ class LLMPlayer(Player):
 
         for i in range(retries):
             try:
-                llm_output = self.get_LLM_action(
+                llm_output = self.llm.get_LLM_action(
                     system_prompt=system_prompt,
                     user_prompt=state_prompt_io,
-                    model=self.backend,
+                    model=self.model,
                     temperature=self.temperature,
                     max_tokens=300,
-                    # stop=["reason"],
-                    json_format=True,
-                    actions=actions,
+                    log_metadata=log_metadata,
                 )
 
                 # load when llm does heavylifting for parsing
@@ -619,7 +605,9 @@ class LLMPlayer(Player):
         else:
             return None
 
-    def tree_search(self, retries, battle, sim=None, return_opp=False) -> BattleOrder:
+    def tree_search(
+        self, retries, battle, sim=None, return_opp=False
+    ) -> Tuple[BattleOrder, int]:
         # generate local simulation
         root = SimNode(
             battle,
@@ -637,11 +625,13 @@ class LLMPlayer(Player):
             sim=sim,
         )
         q = [root]
+        explored_nodes = 0
         leaf_nodes = []
         # create node and add to q B times
         start_time = time.time()
         while len(q) != 0:
             node = q.pop(0)
+            explored_nodes += 1
             # choose node for expansion
             # generate B actions
             player_actions = []
@@ -670,16 +660,16 @@ class LLMPlayer(Player):
                         + "Subtract points based on the effectiveness of the opponent's current moves, especially if they have a faster speed."
                         + "Remove points for each pokemon remaining on the opponent's team, weighted by their strength.\n"
                     )
-                    cot_prompt = 'Briefly justify your total score, up to 100 words. Then, conclude with the score in the JSON format: {"score": <total_points>}. '
+                    # cot_prompt = 'Briefly justify your total score, up to 100 words. Then, conclude with the score in the JSON format: {"score": <total_points>}. '
+                    cot_prompt = 'Answer with the score in the JSON format: {"score": <total_points>}. '
                     state_prompt_io = state_prompt + value_prompt + cot_prompt
-                    llm_output = self.get_LLM_action(
+                    llm_output = self.llm.get_LLM_action(
                         system_prompt=system_prompt,
                         user_prompt=state_prompt_io,
-                        model=self.backend,
+                        model=self.model,
                         temperature=self.temperature,
                         max_tokens=500,
-                        json_format=True,
-                        llm=self.llm_value,
+                        log_metadata=f"SCORE 1-100, depth {node.depth}",
                     )
                     # load when llm does heavylifting for parsing
                     llm_action_json = json.loads(llm_output)
@@ -748,13 +738,13 @@ class LLMPlayer(Player):
                                 {"choice":"damage calculator"} or {"choice":"minimax"}"""
 
                             state_prompt_io = state_prompt + tool_prompt
-                            llm_output = self.get_LLM_action(
+                            llm_output = self.llm.get_LLM_action(
                                 system_prompt=system_prompt,
                                 user_prompt=state_prompt_io,
-                                model=self.backend,
+                                model=self.model,
                                 temperature=0.6,
                                 max_tokens=100,
-                                json_format=True,
+                                log_metadata=f"DMG. CALC OR MINIMAX, depth {node.depth}",
                             )
                             # load when llm does heavylifting for parsing
                             llm_action_json = json.loads(llm_output)
@@ -763,7 +753,7 @@ class LLMPlayer(Player):
                                     if return_opp:
                                         # use tool to save time and llm when move makes bigger difference
                                         return dmg_calc_out, action_opp
-                                    return dmg_calc_out
+                                    return dmg_calc_out, explored_nodes
                         except:
                             print("defaulting to minimax")
                     player_actions.append(dmg_calc_out)
@@ -932,7 +922,7 @@ class LLMPlayer(Player):
         end_time = time.time()
         if return_opp:
             return action, action_opp
-        return action
+        return action, explored_nodes
 
     def battle_summary(self):
 
