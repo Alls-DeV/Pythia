@@ -100,29 +100,36 @@ async def main():
         pbar.update(1)
 
         for trainer in [player, opponent]:
-            if "gpt" in trainer.model or "deepseek" in trainer.model:
-                with open(f"./battle_prompts/{PNUMBER1}/log_{trainer.model}", "a") as f:
+            if any(
+                substring in trainer.username for substring in ["pokechamp", "pythia"]
+            ):
+                with open(f"./llm_log/{PNUMBER1}/log_{trainer.username}", "a") as f:
                     f.write(
                         f"total explored nodes in the entire game: {trainer.total_explored_nodes}\n"
                     )
                     f.write(
-                        f"total time spent on choosing move: {trainer.choose_move_time}\n"
+                        f"total time spent on choosing moves: {trainer.total_choose_move_time}\n"
                     )
                     f.write(
-                        f"total time spent on llm thinking: {trainer.llm_thinking_time}\n"
+                        f"total llm response time: {trainer.llm.total_response_time}\n"
                     )
                     f.write(
-                        f"diff choose move - llm thinking: {trainer.choose_move_time - trainer.llm_thinking_time}\n"
+                        f"diff choose move - llm response time: {trainer.total_choose_move_time -trainer.llm.total_response_time}\n"
                     )
+                    f.write(f"total prompt tokens: {trainer.llm.total_prompt_tokens}\n")
                     f.write(
-                        f"total completion tokens: {trainer.llm.completion_tokens}\n"
+                        f"total completion tokens: {trainer.llm.total_completion_tokens}\n"
                     )
-                    f.write(f"total prompt tokens: {trainer.llm.prompt_tokens}\n")
                 trainer.total_explored_nodes = 0
-                trainer.choose_move_time = 0
-                trainer.llm_thinking_time = 0
-                trainer.llm.completion_tokens = 0
-                trainer.llm.prompt_tokens = 0
+                trainer.total_choose_move_time = 0
+
+                trainer.llm.single_move_response_time = 0
+                trainer.llm.single_move_prompt_tokens = 0
+                trainer.llm.single_move_completion_tokens = 0
+
+                trainer.llm.total_response_time = 0
+                trainer.llm.total_prompt_tokens = 0
+                trainer.llm.total_completion_tokens = 0
 
     print(f"player winrate: {player.win_rate*100}")
 

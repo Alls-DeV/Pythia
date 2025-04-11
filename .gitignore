@@ -7,5 +7,5 @@
 __pycache__
 .vscode
 battle_log/
-battle_prompts/
+llm_log/
 config.py

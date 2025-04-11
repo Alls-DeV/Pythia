@@ -2114,6 +2114,7 @@ class SimNode:
         pokemon_item_dict,
         gen,
         _dynamax_disable,
+        idx: int,
         depth: int = 0,
         format="gen9randombattle",
         prompt_translate=None,
@@ -2142,3 +2143,4 @@ class SimNode:
         self.parent_action = None
         self.hp_diff = 0
         self.children: List[SimNode] = []
+        self.idx = idx

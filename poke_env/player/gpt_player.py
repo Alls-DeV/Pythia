@@ -1,3 +1,4 @@
+import csv
 import os
 from time import sleep, time
 
@@ -13,9 +14,44 @@ class GPTPlayer:
         self.openai_api_key = OPENAI_API_KEY
         self.deepseek_api_key = DEEPSEEK_API_KEY
 
-        self.time_to_respond = 0
-        self.completion_tokens = 0
-        self.prompt_tokens = 0
+        # after the move is chosen it is reset to 0
+        self.single_move_response_time = 0
+        self.single_move_prompt_tokens = 0
+        self.single_move_completion_tokens = 0
+
+        # total response time for the entire game
+        self.total_response_time = 0
+        self.total_prompt_tokens = 0
+        self.total_completion_tokens = 0
+
+        # Ensure log directory exists
+        os.makedirs(f"./llm_log", exist_ok=True)
+
+        # Create CSV file with headers if it doesn't exist
+        self.log_file = f"./llm_log/log.csv"
+        if not os.path.exists(self.log_file):
+            with open(self.log_file, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(
+                    [
+                        "battle_id",
+                        "player_name",
+                        "turn",
+                        "model",
+                        "node_idx",
+                        "parent_idx",
+                        "depth",
+                        "prompt_tokens",
+                        "completion_tokens",
+                        "response_time",
+                        "system_prompt",
+                        "user_prompt",
+                        "llm_output",
+                        "temperature",
+                        "max_tokens",
+                        "stop",
+                    ]
+                )
 
     def get_LLM_action(
         self,
@@ -24,8 +60,8 @@ class GPTPlayer:
         model,
         temperature=0.3,
         stop=[],
-        max_tokens=200,
-        log_metadata=None,
+        max_tokens=100,
+        log_dict=dict(),
     ) -> str:
         if "deepseek" in model:
             client = OpenAI(
@@ -61,36 +97,53 @@ class GPTPlayer:
                 temperature,
                 stop,
                 max_tokens,
-                log_metadata,
+                log_dict,
             )
         end_time = time()
-        self.time_to_respond += end_time - start_time
-        outputs = response.choices[0].message.content
-        # log completion tokens
-        self.completion_tokens += response.usage.completion_tokens
-        self.prompt_tokens += response.usage.prompt_tokens
-        # Logging
-        with open(f"./battle_prompts/{PNUMBER1}/log_{model}", "a") as f:
-            f.write("Prompt Tokens: " + str(response.usage.prompt_tokens) + "\n")
-            f.write(
-                "Completion Tokens: " + str(response.usage.completion_tokens) + "\n"
-            )
-            f.write("Time to respond: " + str(end_time - start_time) + "\n")
-            f.write("--" * 50 + "\n")
+        response_time = end_time - start_time
 
-        if log_metadata is not None:
-            with open(f"./battle_prompts/{PNUMBER1}/log_with_io_{model}", "a") as f:
-                f.write(log_metadata + "\n")
-                f.write("System Prompt:\n" + system_prompt + "\n\n")
-                f.write("User Prompt:\n" + user_prompt + "\n\n")
-                f.write("Output:\n" + outputs + "\n\n")
-                f.write("Prompt Tokens: " + str(response.usage.prompt_tokens) + "\n")
-                f.write(
-                    "Completion Tokens: " + str(response.usage.completion_tokens) + "\n"
-                )
-                f.write("Time to respond: " + str(end_time - start_time) + "\n")
-                f.write("--" * 50 + "\n")
-        return outputs
+        self.single_move_response_time += response_time
+        self.single_move_prompt_tokens += response.usage.prompt_tokens
+        self.single_move_completion_tokens += response.usage.completion_tokens
+
+        self.total_response_time += response_time
+        self.total_completion_tokens += response.usage.completion_tokens
+        self.total_prompt_tokens += response.usage.prompt_tokens
+
+        llm_output = response.choices[0].message.content
+
+        # Log to CSV
+        with open(self.log_file, "a", newline="") as f:
+            writer = csv.writer(f)
+
+            player_name = log_dict.get("player_name", "")
+            turn = log_dict.get("turn", -2)
+            node_idx = log_dict.get("node_idx", -2)
+            parent_idx = log_dict.get("parent_idx", -2)
+            depth = log_dict.get("depth", -2)
+
+            writer.writerow(
+                [
+                    PNUMBER1,  # TODO: It works for 'local_1v1.py' but idk for other files
+                    player_name,
+                    turn,
+                    model,
+                    node_idx,
+                    parent_idx,
+                    depth,
+                    response.usage.prompt_tokens,
+                    response.usage.completion_tokens,
+                    response_time,
+                    system_prompt,
+                    user_prompt,
+                    llm_output,
+                    temperature,
+                    max_tokens,
+                    stop,
+                ]
+            )
+
+        return llm_output
 
     def get_LLM_query(
         self,
