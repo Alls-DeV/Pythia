@@ -175,7 +175,7 @@ class Pythia(Player):
                 f.write(
                     f"llm completion tokens: {self.llm.single_move_completion_tokens}\n"
                 )
-                f.write("~~" * 50 + "\n\n")
+                f.write("-" * 100 + "\n")
 
             self.llm.single_move_response_time = 0
             self.llm.single_move_prompt_tokens = 0

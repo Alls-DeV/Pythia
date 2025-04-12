@@ -116,8 +116,7 @@ class LLMPlayer(Player):
         self.llm_value = self.llm
         self.K = K  # for minimax, SC, ToT
 
-        self.choose_move_time = 0
-        self.llm_thinking_time = 0
+        self.total_choose_move_time = 0
         self.total_explored_nodes = 0
 
     def check_all_pokemon(self, pokemon_str: str) -> Pokemon:
@@ -306,28 +305,37 @@ class LLMPlayer(Player):
 
         elif self.prompt_algo == "minimax":
             try:
-                # return self.tree_search(retries, battle)
-
                 start_time = time.time()
                 action, explored_nodes = self.tree_search(retries, battle)
                 end_time = time.time()
+                # I'm returning the idx of the last node, since they start at 0 I'm adding 1 to the count
+                explored_nodes += 1
 
-                with open(f"./battle_prompts/{PNUMBER1}/log_{self.model}", "a") as f:
+                with open(f"./llm_log/{PNUMBER1}/log_{self.username}", "a") as f:
                     f.write(f"explored nodes to find the best move: {explored_nodes}\n")
-                    f.write(f"total time to choose move: {end_time - start_time}\n")
-                    f.write(f"llm thinking time: {self.llm.time_to_respond}\n")
+                    f.write(f"time to choose the move: {end_time - start_time}\n")
                     f.write(
-                        f"overhead time: {end_time - start_time - self.llm.time_to_respond}\n"
+                        f"llm response time: {self.llm.single_move_response_time}\n"
                     )
-                    f.write("~~" * 50 + "\n\n")
+                    f.write(
+                        f"overhead time: {end_time - start_time - self.llm.single_move_response_time}\n"
+                    )
+                    f.write(
+                        f"llm prompt tokens: {self.llm.single_move_prompt_tokens}\n"
+                    )
+                    f.write(
+                        f"llm completion tokens: {self.llm.single_move_completion_tokens}\n"
+                    )
+                    f.write("-" * 100 + "\n")
 
-                self.choose_move_time += end_time - start_time
-                self.llm_thinking_time += self.llm.time_to_respond
+                self.llm.single_move_response_time = 0
+                self.llm.single_move_prompt_tokens = 0
+                self.llm.single_move_completion_tokens = 0
+
+                self.total_choose_move_time += end_time - start_time
                 self.total_explored_nodes += explored_nodes
-                self.llm.time_to_respond = 0
 
                 return action
-
             except Exception as e:
                 print("minimax step failed. Using dmg calc")
                 print(f"Exception: {e}", "passed")
@@ -344,7 +352,7 @@ class LLMPlayer(Player):
         battle: Battle,
         sim,
         dont_verify=False,
-        log_metadata=None,
+        log_dict=dict(),
         actions=None,
     ):
         next_action = None
@@ -359,9 +367,7 @@ class LLMPlayer(Player):
                     system_prompt=system_prompt,
                     user_prompt=state_prompt_io,
                     model=self.model,
-                    temperature=self.temperature,
-                    max_tokens=300,
-                    log_metadata=log_metadata,
+                    log_dict=log_dict,
                 )
 
                 # load when llm does heavylifting for parsing
@@ -609,6 +615,7 @@ class LLMPlayer(Player):
         self, retries, battle, sim=None, return_opp=False
     ) -> Tuple[BattleOrder, int]:
         # generate local simulation
+        node_idx = 0
         root = SimNode(
             battle,
             self.move_effect,
@@ -619,19 +626,18 @@ class LLMPlayer(Player):
             self.pokemon_item_dict,
             self.gen,
             self._dynamax_disable,
+            idx=node_idx,
             depth=1,
             format=self.format,
             prompt_translate=self.prompt_translate,
             sim=sim,
         )
         q = [root]
-        explored_nodes = 0
         leaf_nodes = []
         # create node and add to q B times
         start_time = time.time()
         while len(q) != 0:
             node = q.pop(0)
-            explored_nodes += 1
             # choose node for expansion
             # generate B actions
             player_actions = []
@@ -647,6 +653,14 @@ class LLMPlayer(Player):
             # panic_move = self.check_timeout(start_time, battle)
             # if panic_move is not None:
             #     return panic_move
+
+            log_dict = {
+                "player_name": self.username,
+                "turn": node.simulation.battle.turn,
+                "node_idx": node.idx,
+                "parent_idx": node.parent_node.idx if node.parent_node else -1,
+                "depth": node.depth,
+            }
             # end if terminal
             if node.simulation.is_terminal() or node.depth == self.K:
                 try:
@@ -669,7 +683,7 @@ class LLMPlayer(Player):
                         model=self.model,
                         temperature=self.temperature,
                         max_tokens=500,
-                        log_metadata=f"SCORE 1-100, depth {node.depth}",
+                        log_dict=log_dict,
                     )
                     # load when llm does heavylifting for parsing
                     llm_action_json = json.loads(llm_output)
@@ -744,7 +758,7 @@ class LLMPlayer(Player):
                                 model=self.model,
                                 temperature=0.6,
                                 max_tokens=100,
-                                log_metadata=f"DMG. CALC OR MINIMAX, depth {node.depth}",
+                                log_dict=log_dict,
                             )
                             # load when llm does heavylifting for parsing
                             llm_action_json = json.loads(llm_output)
@@ -753,7 +767,7 @@ class LLMPlayer(Player):
                                     if return_opp:
                                         # use tool to save time and llm when move makes bigger difference
                                         return dmg_calc_out, action_opp
-                                    return dmg_calc_out, explored_nodes
+                                    return dmg_calc_out, node_idx
                         except:
                             print("defaulting to minimax")
                     player_actions.append(dmg_calc_out)
@@ -780,6 +794,7 @@ class LLMPlayer(Player):
                         state_action_prompt_switch,
                         node.simulation.battle,
                         node.simulation,
+                        log_dict=log_dict,
                     )
                     if len(player_actions) == 0:
                         player_actions.append(action_llm_switch)
@@ -806,6 +821,7 @@ class LLMPlayer(Player):
                     state_action_prompt_move,
                     node.simulation.battle,
                     node.simulation,
+                    log_dict=log_dict,
                 )
                 if len(player_actions) == 0:
                     player_actions.append(action_llm_move)
@@ -862,6 +878,7 @@ class LLMPlayer(Player):
                 node.simulation.battle,
                 node.simulation,
                 dont_verify=True,
+                log_dict=log_dict,
             )
             is_repeat_action_o = np.array(
                 [
@@ -887,6 +904,8 @@ class LLMPlayer(Player):
                         node_new.action_opp = action_o
                         node_new.parent_node = node
                         node_new.parent_action = node.action
+                        node_idx += 1
+                        node_new.idx = node_idx
                         node.children.append(node_new)
                         node_new.simulation.step(action_p, action_o)
                         q.append(node_new)
@@ -922,7 +941,7 @@ class LLMPlayer(Player):
         end_time = time.time()
         if return_opp:
             return action, action_opp
-        return action, explored_nodes
+        return action, node_idx
 
     def battle_summary(self):
 
