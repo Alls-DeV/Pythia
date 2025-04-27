@@ -1,0 +1,270 @@
+{
+  "builder_name": "parquet",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "pokechamp",
+  "dataset_size": 20405120199,
+  "description": "",
+  "download_checksums": {
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00000-of-00037.parquet": {
+      "num_bytes": 138707057,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00001-of-00037.parquet": {
+      "num_bytes": 139372353,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00002-of-00037.parquet": {
+      "num_bytes": 131694565,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00003-of-00037.parquet": {
+      "num_bytes": 131203525,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00004-of-00037.parquet": {
+      "num_bytes": 135642225,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00005-of-00037.parquet": {
+      "num_bytes": 136521132,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00006-of-00037.parquet": {
+      "num_bytes": 127504007,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00007-of-00037.parquet": {
+      "num_bytes": 126769916,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00008-of-00037.parquet": {
+      "num_bytes": 139098096,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00009-of-00037.parquet": {
+      "num_bytes": 138749284,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00010-of-00037.parquet": {
+      "num_bytes": 131698864,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00011-of-00037.parquet": {
+      "num_bytes": 137064447,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00012-of-00037.parquet": {
+      "num_bytes": 140332943,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00013-of-00037.parquet": {
+      "num_bytes": 132327975,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00014-of-00037.parquet": {
+      "num_bytes": 134540436,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00015-of-00037.parquet": {
+      "num_bytes": 141611651,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00016-of-00037.parquet": {
+      "num_bytes": 142745537,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00017-of-00037.parquet": {
+      "num_bytes": 128108648,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00018-of-00037.parquet": {
+      "num_bytes": 128464000,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00019-of-00037.parquet": {
+      "num_bytes": 136183890,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00020-of-00037.parquet": {
+      "num_bytes": 140205552,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00021-of-00037.parquet": {
+      "num_bytes": 132491803,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00022-of-00037.parquet": {
+      "num_bytes": 139082202,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00023-of-00037.parquet": {
+      "num_bytes": 139425527,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00024-of-00037.parquet": {
+      "num_bytes": 131131849,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00025-of-00037.parquet": {
+      "num_bytes": 136363509,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00026-of-00037.parquet": {
+      "num_bytes": 138736159,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00027-of-00037.parquet": {
+      "num_bytes": 135590324,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00028-of-00037.parquet": {
+      "num_bytes": 131747282,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00029-of-00037.parquet": {
+      "num_bytes": 133159046,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00030-of-00037.parquet": {
+      "num_bytes": 141277066,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00031-of-00037.parquet": {
+      "num_bytes": 135478315,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00032-of-00037.parquet": {
+      "num_bytes": 131064120,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00033-of-00037.parquet": {
+      "num_bytes": 138309748,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00034-of-00037.parquet": {
+      "num_bytes": 139336377,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00035-of-00037.parquet": {
+      "num_bytes": 134466650,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/train-00036-of-00037.parquet": {
+      "num_bytes": 131419980,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/test-00000-of-00005.parquet": {
+      "num_bytes": 110355710,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/test-00001-of-00005.parquet": {
+      "num_bytes": 111703137,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/test-00002-of-00005.parquet": {
+      "num_bytes": 111230510,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/test-00003-of-00005.parquet": {
+      "num_bytes": 112349857,
+      "checksum": null
+    },
+    "hf://datasets/milkkarten/pokechamp@b5820ff5d0c8d5e5cec692d55f756b6e5a66a203/data/test-00004-of-00005.parquet": {
+      "num_bytes": 111811258,
+      "checksum": null
+    }
+  },
+  "download_size": 5565076532,
+  "features": {
+    "text": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "month_year": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "gamemode": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "elo": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "battle_id": {
+      "dtype": "string",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 25970196731,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 18361167290,
+      "num_examples": 1916868,
+      "shard_lengths": [
+        51000,
+        50808,
+        55616,
+        54808,
+        51808,
+        50808,
+        58808,
+        54808,
+        49808,
+        52807,
+        54807,
+        50807,
+        50807,
+        54807,
+        50807,
+        48807,
+        49807,
+        58807,
+        53807,
+        49807,
+        52807,
+        53807,
+        49807,
+        52807,
+        54807,
+        50807,
+        49807,
+        53807,
+        54807,
+        50807,
+        49807,
+        55807,
+        51807,
+        50807,
+        51807,
+        55807,
+        22807
+      ],
+      "dataset_name": "pokechamp"
+    },
+    "test": {
+      "name": "test",
+      "num_bytes": 2043952909,
+      "num_examples": 213356,
+      "shard_lengths": [
+        53672,
+        52671,
+        51671,
+        52671,
+        2671
+      ],
+      "dataset_name": "pokechamp"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}

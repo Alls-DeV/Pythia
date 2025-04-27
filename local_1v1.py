@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import os
 
 from tqdm import tqdm
 
@@ -13,6 +12,13 @@ Pythia = {
     "prompt_algo": "None",
     "model": "deepseek-chat",
     "device": 0,
+}
+
+PythiaLlama = {
+    "name": "pyllama",
+    "prompt_algo": "None",
+    "model": "meta-llama/Llama-3.2-1B-Instruct",
+    "device": 0,  # TODO: ???
 }
 
 Pokechamp = {
@@ -30,7 +36,7 @@ Abyssal = {
 }
 
 PLAYER = Pythia
-OPPONENT = Pokechamp
+OPPONENT = Abyssal
 
 parser = argparse.ArgumentParser()
 

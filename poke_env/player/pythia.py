@@ -97,9 +97,8 @@ class Pythia(Player):
 
         if "gpt" in model or "deepseek" in model:
             self.llm = GPTPlayer(self.api_key)
-        elif "llama" == model:
-            self.llm = LLAMAPlayer(device=device)
-        # TODO: add google Player
+        elif "llama" in model:
+            self.llm = LLAMAPlayer(model=model, device=device)
         else:
             raise NotImplementedError("LLM type not implemented:", model)
 
