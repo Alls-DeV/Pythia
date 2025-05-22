@@ -24,14 +24,14 @@ from poke_env.player.gpt_player import GPTPlayer
 from poke_env.player.llama_player import LLAMAPlayer
 from poke_env.player.local_simulation import LocalSim, SimNode
 from poke_env.player.player import BattleOrder, Player
-from poke_env.player.pythia_prompt import (
+from poke_env.player.prompts import (
     get_number_turns_faint,
     get_status_num_turns_fnt,
     state_translate,
 )
 
 
-class Pythia(Player):
+class Pokechamp(Player):
     def __init__(
         self,
         battle_format,
@@ -92,10 +92,6 @@ class Pythia(Player):
             f"./poke_env/data/static/pokedex/gen{self.gen.gen}pokedex.json", "r"
         ) as f:
             self._pokemon_dict = json.load(f)
-        with open(
-            f"./poke_env/data/static/pythia_strategy/prompt_strategy.json", "r"
-        ) as f:
-            self.prompt_strategy = json.load(f)
 
         self.last_plan = ""
 
@@ -140,7 +136,6 @@ class Pythia(Player):
             self.strategy_prompt,
             format=self.format,
             prompt_translate=self.prompt_translate,
-            prompt_strategy=self.prompt_strategy,
         )
         if battle.turn <= 1 and self.use_strat_prompt:
             self.strategy_prompt = sim.get_llm_system_prompt(
@@ -366,7 +361,6 @@ class Pythia(Player):
             self.gen,
             self._dynamax_disable,
             format=self.format,
-            prompt_strategy=self.prompt_strategy,
         )
         best_action = None
         best_action_turns = np.inf
@@ -423,7 +417,6 @@ class Pythia(Player):
             depth=1,
             format=self.format,
             prompt_translate=self.prompt_translate,
-            prompt_strategy=self.strategy_prompt,
             sim=sim,
         )
         q = [root]

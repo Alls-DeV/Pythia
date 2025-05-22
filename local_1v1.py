@@ -35,6 +35,13 @@ Abyssal = {
     "device": 0,
 }
 
+Random = {
+    "name": "random",
+    "prompt_algo": "random",
+    "model": "None",
+    "device": 0,
+}
+
 PLAYER = Pythia
 OPPONENT = Abyssal
 
@@ -85,59 +92,35 @@ async def main():
         args.opponent_prompt_algo,
         args.opponent_name,
         device=args.opponent_device,
-        PNUMBER1=PNUMBER1,  # for name uniqueness locally
+        PNUMBER1=PNUMBER1 + 1,  # for name uniqueness locally
         battle_format=args.battle_format,
     )
 
-    player_team_id = 18
-    opponent_team_id = 18
+    player_team_id = 2
+    opponent_team_id = 3
     if not "random" in args.battle_format:
         player.update_team(load_random_team(player_team_id))
         opponent.update_team(load_random_team(opponent_team_id))
 
-    N = 1
-    pbar = tqdm(total=N)
-    for i in range(N):
-        await player.battle_against(opponent, n_battles=1)
-        if not "random" in args.battle_format:
-            player.update_team(load_random_team())
-            opponent.update_team(load_random_team())
-        pbar.set_description(f"{player.win_rate*100:.2f}%")
-        pbar.update(1)
+    await player.battle_against(opponent)
 
-        for trainer in [player, opponent]:
-            if any(
-                substring in trainer.username for substring in ["pokechamp", "pythia"]
-            ):
-                with open(f"./llm_log/{PNUMBER1}/log_{trainer.username}", "a") as f:
-                    f.write(
-                        f"total explored nodes in the entire game: {trainer.total_explored_nodes}\n"
-                    )
-                    f.write(
-                        f"total time spent on choosing moves: {trainer.total_choose_move_time}\n"
-                    )
-                    f.write(
-                        f"total llm response time: {trainer.llm.total_response_time}\n"
-                    )
-                    f.write(
-                        f"diff choose move - llm response time: {trainer.total_choose_move_time -trainer.llm.total_response_time}\n"
-                    )
-                    f.write(f"total prompt tokens: {trainer.llm.total_prompt_tokens}\n")
-                    f.write(
-                        f"total completion tokens: {trainer.llm.total_completion_tokens}\n"
-                    )
-                trainer.total_explored_nodes = 0
-                trainer.total_choose_move_time = 0
-
-                trainer.llm.single_move_response_time = 0
-                trainer.llm.single_move_prompt_tokens = 0
-                trainer.llm.single_move_completion_tokens = 0
-
-                trainer.llm.total_response_time = 0
-                trainer.llm.total_prompt_tokens = 0
-                trainer.llm.total_completion_tokens = 0
-
-    print(f"player winrate: {player.win_rate*100}")
+    for trainer in [player, opponent]:
+        if any(substring in trainer.username for substring in ["pokechamp", "pythia"]):
+            with open(f"./llm_log/{PNUMBER1}/log_{trainer.username}", "a") as f:
+                f.write(
+                    f"total explored nodes in the entire game: {trainer.total_explored_nodes}\n"
+                )
+                f.write(
+                    f"total time spent on choosing moves: {trainer.total_choose_move_time}\n"
+                )
+                f.write(f"total llm response time: {trainer.llm.total_response_time}\n")
+                f.write(
+                    f"diff choose move - llm response time: {trainer.total_choose_move_time -trainer.llm.total_response_time}\n"
+                )
+                f.write(f"total prompt tokens: {trainer.llm.total_prompt_tokens}\n")
+                f.write(
+                    f"total completion tokens: {trainer.llm.total_completion_tokens}\n"
+                )
 
 
 if __name__ == "__main__":

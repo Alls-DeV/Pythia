@@ -27,11 +27,11 @@ BATTLE_FORMAT_CHOICES = ["gen8randombattle", "gen8ou", "gen9ou", "gen9randombatt
 
 PNUMBER1 = 0
 while True:
-    PNUMBER1 = str(np.random.randint(0, 10000))
     if not os.path.exists(f"./llm_log/{PNUMBER1}"):
         os.makedirs(f"./llm_log/{PNUMBER1}")
         break
+    PNUMBER1 += 1
 print(PNUMBER1)
-seed = 100
+seed = 42
 random.seed(seed)
 np.random.seed(seed)

@@ -38,18 +38,18 @@ class GPTPlayer:
                         "player_name",
                         "turn",
                         "model",
-                        "node_idx",
-                        "parent_idx",
-                        "depth",
                         "prompt_tokens",
                         "completion_tokens",
                         "response_time",
-                        "system_prompt",
-                        "user_prompt",
-                        "llm_output",
                         "temperature",
                         "max_tokens",
                         "stop",
+                        "node_idx",
+                        "parent_idx",
+                        "depth",
+                        # "system_prompt",
+                        # "user_prompt",
+                        # "llm_output",
                     ]
                 )
 
@@ -112,6 +112,12 @@ class GPTPlayer:
 
         llm_output = response.choices[0].message.content
 
+        with open(f"./llm_log/{PNUMBER1}/log_prompts", "a") as f:
+            f.write(f"system_prompt: {system_prompt}\n\n")
+            f.write(f"user_prompt: {user_prompt}\n\n")
+            f.write(f"llm_output: {llm_output}\n\n")
+            f.write(f"-" * 20 + "\n\n")
+
         # Log to CSV
         with open(self.log_file, "a", newline="") as f:
             writer = csv.writer(f)
@@ -128,18 +134,18 @@ class GPTPlayer:
                     player_name,
                     turn,
                     model,
-                    node_idx,
-                    parent_idx,
-                    depth,
                     response.usage.prompt_tokens,
                     response.usage.completion_tokens,
                     response_time,
-                    system_prompt,
-                    user_prompt,
-                    llm_output,
                     temperature,
                     max_tokens,
                     stop,
+                    node_idx,
+                    parent_idx,
+                    depth,
+                    # system_prompt,
+                    # user_prompt,
+                    # llm_output,
                 ]
             )
 
