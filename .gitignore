@@ -9,3 +9,4 @@ __pycache__
 battle_log/
 llm_log/
 config.py
+mini_dataset_battles/

@@ -2,7 +2,7 @@ import csv
 import os
 from time import sleep, time
 
-from openai import OpenAI, RateLimitError
+from openai import AzureOpenAI, OpenAI, RateLimitError
 
 from common import PNUMBER1
 
@@ -68,7 +68,11 @@ class GPTPlayer:
                 api_key=self.deepseek_api_key, base_url="https://api.deepseek.com"
             )
         else:
-            client = OpenAI(api_key=self.openai_api_key)
+            client = AzureOpenAI(
+                api_version="2024-12-01-preview",
+                azure_endpoint="https://pokemon-paper.openai.azure.com/",
+                api_key=self.openai_api_key,
+            )
         start_time = time()
         try:
             response = client.chat.completions.create(
