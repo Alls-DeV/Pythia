@@ -24,11 +24,9 @@ from poke_env.player.gpt_player import GPTPlayer
 from poke_env.player.llama_player import LLAMAPlayer
 from poke_env.player.local_simulation import LocalSim, SimNode
 from poke_env.player.player import BattleOrder, Player
-from poke_env.player.pythia_prompt import (
-    get_number_turns_faint,
-    get_status_num_turns_fnt,
-    state_translate,
-)
+from poke_env.player.pythia_prompt import (get_number_turns_faint,
+                                           get_status_num_turns_fnt,
+                                           state_translate)
 
 
 class Pythia(Player):
@@ -92,10 +90,6 @@ class Pythia(Player):
             f"./poke_env/data/static/pokedex/gen{self.gen.gen}pokedex.json", "r"
         ) as f:
             self._pokemon_dict = json.load(f)
-        with open(
-            f"./poke_env/data/static/pythia_strategy/prompt_strategy.json", "r"
-        ) as f:
-            self.prompt_strategy = json.load(f)
 
         self.last_plan = ""
 
@@ -111,21 +105,6 @@ class Pythia(Player):
         self.total_choose_move_time = 0
         self.total_explored_nodes = 0
 
-    def check_all_pokemon(self, pokemon_str: str) -> Pokemon:
-        valid_pokemon = None
-        if pokemon_str in self._pokemon_dict:
-            valid_pokemon = pokemon_str
-        else:
-            closest = get_close_matches(
-                pokemon_str, self._pokemon_dict.keys(), n=1, cutoff=0.8
-            )
-            if len(closest) > 0:
-                valid_pokemon = closest[0]
-        if valid_pokemon is None:
-            return None
-        pokemon = Pokemon(species=pokemon_str, gen=self.genNum)
-        return pokemon
-
     def choose_move(self, battle: AbstractBattle):
         sim = LocalSim(
             battle,
@@ -140,13 +119,7 @@ class Pythia(Player):
             self.strategy_prompt,
             format=self.format,
             prompt_translate=self.prompt_translate,
-            prompt_strategy=self.prompt_strategy,
         )
-        if battle.turn <= 1 and self.use_strat_prompt:
-            self.strategy_prompt = sim.get_llm_system_prompt(
-                self.format, self.llm, team_str=self.team_str, model="gpt-4o-2024-05-13"
-            )
-
         if battle.active_pokemon:
             if battle.active_pokemon.fainted and len(battle.available_switches) == 1:
                 next_action = BattleOrder(battle.available_switches[0])
@@ -163,6 +136,7 @@ class Pythia(Player):
         retries = 2
         try:
             start_time = time.time()
+            # TODO: probably explored_nodes will be useless
             action, explored_nodes = self.tree_search(retries, battle)
             end_time = time.time()
             # I'm returning the idx of the last node, since they start at 0 I'm adding 1 to the count
@@ -366,7 +340,6 @@ class Pythia(Player):
             self.gen,
             self._dynamax_disable,
             format=self.format,
-            prompt_strategy=self.prompt_strategy,
         )
         best_action = None
         best_action_turns = np.inf
@@ -423,7 +396,6 @@ class Pythia(Player):
             depth=1,
             format=self.format,
             prompt_translate=self.prompt_translate,
-            prompt_strategy=self.strategy_prompt,
             sim=sim,
         )
         q = [root]

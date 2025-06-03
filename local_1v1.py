@@ -11,6 +11,7 @@ Pythia = {
     "name": "pythia",
     "prompt_algo": "None",
     "model": "deepseek-chat",
+    # "model": "gpt-4.1-nano",
     "device": 0,
 }
 
