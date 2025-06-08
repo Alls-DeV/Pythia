@@ -190,7 +190,6 @@ class LocalSim:
         _strategy: str = "",
         format: str = "gen9randombattle",
         prompt_translate: Callable = None,
-        prompt_strategy: Dict = None,
     ):
         self.battle = deepcopy(battle)
         self.move_effect = move_effect
@@ -206,11 +205,6 @@ class LocalSim:
         self.strategy = _strategy
         self.format = format
         self.prompt_translate = prompt_translate
-        # self.prompt_strategy = prompt_strategy
-        with open(
-            f"poke_env/data/static/pythia_strategy/prompt_strategy.json", "r"
-        ) as f:
-            self.prompt_strategy = json.load(f)
 
         self.switch_set = set()
 
@@ -2124,7 +2118,6 @@ class SimNode:
         depth: int = 0,
         format="gen9randombattle",
         prompt_translate=None,
-        prompt_strategy=None,
         sim=None,
     ):
         if sim is None:
@@ -2140,7 +2133,6 @@ class SimNode:
                 _dynamax_disable,
                 format=format,
                 prompt_translate=prompt_translate,
-                prompt_strategy=prompt_strategy,
             )
         else:
             self.simulation = sim
