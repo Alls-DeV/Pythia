@@ -98,23 +98,6 @@ class Pythia(Player):
         self.total_explored_nodes = 0
 
     def choose_move(self, battle: AbstractBattle):
-        # TODO: edge case
-        if battle.active_pokemon.fainted:
-            return BattleOrder(battle.available_switches[0])
-
-        # TODO: edge case
-        if battle.opponent_active_pokemon.fainted:
-            return self.choose_random_move(battle)
-
-        if battle.active_pokemon.fainted and len(battle.available_switches) == 1:
-            return BattleOrder(battle.available_switches[0])
-        elif (
-            not battle.active_pokemon.fainted
-            and len(battle.available_moves) == 1
-            and len(battle.available_switches) == 0
-        ):
-            return self.choose_random_move(battle)
-
         try:
             start_time = time.time()
             # TODO: probably explored_nodes will be useless
@@ -152,7 +135,10 @@ class Pythia(Player):
 
             print("minimax step failed. Using dmg calc")
             print(f"Exception: {e}", "passed")
-            return self.choose_max_damage_move(battle)
+            if battle.available_moves:
+                return self.choose_max_damage_move(battle)
+            else:
+                return BattleOrder(battle.available_switches[0])
 
     # TODO: make it more complex
     def _evaluate_state(self, battle_state: AbstractBattle) -> float:
