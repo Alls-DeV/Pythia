@@ -1,17 +1,22 @@
 import json
 import time
 import traceback
+from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple
+
+import orjson
 
 from common import PNUMBER1
 from poke_env.data.gen_data import GenData
 from poke_env.environment.abstract_battle import AbstractBattle
 from poke_env.environment.battle import Battle
 from poke_env.environment.move import Move
+from poke_env.environment.pokemon_type import PokemonType
 from poke_env.player.gpt_player import GPTPlayer
 from poke_env.player.llama_player import LLAMAPlayer
 from poke_env.player.local_simulation import LocalSim
 from poke_env.player.player import BattleOrder, Player
+from poke_env.player.pythia_prompt import state_translate
 
 
 class Pythia(Player):
@@ -26,7 +31,7 @@ class Pythia(Player):
         save_replays=None,
         account_configuration=None,
         server_configuration=None,
-        K=2,
+        K=1,
         _use_strat_prompt=False,
         prompt_translate: Callable = state_translate,
         device=0,
@@ -75,6 +80,8 @@ class Pythia(Player):
             f"./poke_env/data/static/pokedex/gen{self.gen.gen}pokedex.json", "r"
         ) as f:
             self._pokemon_dict = json.load(f)
+        with open("poke_env/data/static/gen9/ou/sets_1825.json", "r") as f:
+            self.pokedex = orjson.loads(f.read())
 
         self.last_plan = ""
 
@@ -111,10 +118,8 @@ class Pythia(Player):
         try:
             start_time = time.time()
             # TODO: probably explored_nodes will be useless
-            action, explored_nodes = self.tree_search(battle)
+            action, explored_nodes = self.minimax(battle)
             end_time = time.time()
-            # I'm returning the idx of the last node, since they start at 0 I'm adding 1 to the count
-            explored_nodes += 1
 
             with open(f"./llm_log/{PNUMBER1}/log_{self.username}", "a") as f:
                 f.write(f"explored nodes to find the best move: {explored_nodes}\n")
@@ -189,10 +194,8 @@ class Pythia(Player):
         """
         Simulates one turn of a battle given player and opponent orders.
         Returns the new battle state after the turn.
-        Crucially, this should use a deepcopy of the battle to not affect parent states.
         """
         # Create a new LocalSim instance for this simulation step
-        # The battle state itself needs to be a deepcopy for the simulation
         local_sim = LocalSim(
             battle=source_battle_state,
             move_effect=self.move_effect,
@@ -363,12 +366,56 @@ class Pythia(Player):
                     break  # Alpha cut-off
             return min_eval
 
-    def tree_search(self, battle: AbstractBattle) -> Tuple[Optional[BattleOrder], int]:
+    def _enrich_opponent_pokemon(self, battle: AbstractBattle):
+        mon = battle.opponent_active_pokemon
+        if mon.species not in self.pokedex:
+            return
+        data = self.pokedex[mon.species]
+
+        if len(mon.moves) < 4:
+            moves = []
+            for key in mon.moves:
+                moves.append(mon.moves[key].id)
+
+            for possible_move in data.get("moves", []):
+                possible_move = (
+                    possible_move["name"].lower().replace(" ", "").replace("-", "")
+                )
+                if possible_move not in moves:
+                    mon._add_move(possible_move)
+                    moves.append(possible_move)
+                if len(moves) == 4:
+                    break
+
+        if mon.ability is None:
+            if data.get("abilities"):
+                mon.ability = (
+                    data["abilities"][0]["name"]
+                    .lower()
+                    .replace(" ", "")
+                    .replace("-", "")
+                )
+
+        if mon.item == "unknown_item":
+            if data.get("items"):
+                mon.item = (
+                    data["items"][0]["name"].lower().replace(" ", "").replace("-", "")
+                )
+
+        if mon._terastallized_type is None:
+            if data.get("tera"):
+                mon._terastallized_type = PokemonType.from_name(data["tera"][0]["name"])
+
+    def minimax(self, battle: AbstractBattle) -> Tuple[Optional[BattleOrder], int]:
         """
         Chooses the best move for the current player using the Minimax algorithm.
         Simulates 1v1 scenarios, does not consider switches.
         A leaf node is where a Pokémon faints or max depth is reached.
         """
+        # Create a backup of opponent's Pokémon data before enrichment
+        battle = deepcopy(battle)
+        self._enrich_opponent_pokemon(battle)
+
         max_depth = self.K
         node_idx_counter = {"count": 0}
         best_action_order: Optional[BattleOrder] = None
