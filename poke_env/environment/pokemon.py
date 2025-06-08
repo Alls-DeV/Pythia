@@ -901,7 +901,6 @@ class Pokemon:
             set = sets[self.species.lower()]["spreads"][0]
             spread = set["stats"]
             nature = set["nature"]
-            pass
         else:
             # statistically weighted choice
             def get_weighted_choice(category, id, size=1):
@@ -972,11 +971,11 @@ class Pokemon:
 
     def calculate_stats(self, ivs=(31,) * 6, evs=(85,) * 6, battle_format="random"):
         nature = None
-        if not "random" in battle_format:
+        if not "random" in battle_format and self.species.lower() in self.sets:
             # brute force the iv/ev
             evs, nature = self.guess_stats()
 
-        if self.stats["atk"] is None:
+        if self.stats["atk"] is None and self.species.lower() in self.sets:
             evs = self.sets[self.species.lower()]["spreads"][0]["stats"]
 
         def common_pkmn_stat_calc(stat: int, iv: int, ev: int, level: int):

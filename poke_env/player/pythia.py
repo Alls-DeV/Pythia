@@ -118,8 +118,11 @@ class Pythia(Player):
         try:
             start_time = time.time()
             # TODO: probably explored_nodes will be useless
-            action, explored_nodes = self.minimax(battle)
+            action, explored_nodes = self.choose_best_action(battle)
             end_time = time.time()
+            print(
+                f"Action chosen: {action}, explored nodes: {explored_nodes}, time taken: {end_time - start_time}\n"
+            )
 
             with open(f"./llm_log/{PNUMBER1}/log_{self.username}", "a") as f:
                 f.write(f"explored nodes to find the best move: {explored_nodes}\n")
@@ -152,37 +155,25 @@ class Pythia(Player):
             return self.choose_max_damage_move(battle)
 
     # TODO: make it more complex
-    def _evaluate_state(self, battle_state: AbstractBattle) -> int:
+    def _evaluate_state(self, battle_state: AbstractBattle) -> float:
         """
         Evaluates the current battle state from the perspective of the player.
         Score = player's active Pokémon HP - opponent's active Pokémon HP.
         """
-        player_hp = battle_state.active_pokemon.current_hp
-        opponent_hp = battle_state.opponent_active_pokemon.current_hp
-
-        # TODO: simple check to remove in the future
-        if battle_state.active_pokemon.fainted:
-            assert player_hp == 0
-        if battle_state.opponent_active_pokemon.fainted:
-            assert opponent_hp == 0
-
-        return player_hp - opponent_hp
+        score = battle_state._team_size["p1"] - battle_state._team_size["p2"]
+        for pokemon in battle_state.team.values():
+            score = score - 1 + pokemon.current_hp_fraction
+        for pokemon in battle_state.opponent_team.values():
+            score = score + 1 - pokemon.current_hp_fraction
+        return score
 
     def _get_opponent_possible_moves(self, battle_state: AbstractBattle) -> List[Move]:
-        """
-        Gets a list of possible moves for the opponent's active Pokémon.
-        """
+        # TODO: check how to handle strange status
         if (
             battle_state.opponent_active_pokemon
             and not battle_state.opponent_active_pokemon.fainted
         ):
-            opp_moves = list(battle_state.opponent_active_pokemon.moves.values())
-
-            result = [move for move in opp_moves if move.current_pp > 0]
-            if not result:
-                result.append(Move("struggle", self.genNum))
-            return result
-
+            return battle_state.opponent_active_pokemon.moves.values()
         return []
 
     def _simulate_one_turn_local(
@@ -214,157 +205,6 @@ class Pythia(Player):
         local_sim.step(player_order, opponent_order)
 
         return local_sim.battle  # Return the new battle state
-
-    def _minimax_score(
-        self,
-        current_battle_state: AbstractBattle,
-        depth: int,
-        is_maximizing_player: bool,
-        max_depth: int,
-        alpha: float,
-        beta: float,
-        node_idx_ref: Dict,
-    ) -> float:
-        """
-        Recursive Minimax function with alpha-beta pruning.
-        """
-        node_idx_ref["count"] += 1
-
-        # Base Cases: game over or max depth reached
-        if (
-            depth == max_depth
-            or (
-                current_battle_state.active_pokemon
-                and current_battle_state.active_pokemon.fainted
-            )
-            or (
-                current_battle_state.opponent_active_pokemon
-                and current_battle_state.opponent_active_pokemon.fainted
-            )
-            or current_battle_state.finished
-        ):
-            return self._evaluate_state(current_battle_state)
-
-        if is_maximizing_player:  # Player's turn
-            max_eval = -float("inf")
-            player_actions = current_battle_state.available_moves
-            if (
-                not player_actions
-            ):  # No moves available (e.g. Struggle, or trapped without moves)
-                if current_battle_state.active_pokemon:
-                    player_actions = [Move("struggle", self.genNum)]
-                else:  # Should not happen if pokemon not fainted, or battle should end.
-                    return self._evaluate_state(current_battle_state)
-
-            for p_action_obj in player_actions:
-                p_order = self.create_order(p_action_obj)
-
-                # Assume opponent will make a move to minimize our score
-                # This requires simulating opponent's responses
-                current_worst_outcome_for_player = float("inf")
-                opponent_possible_moves = self._get_opponent_possible_moves(
-                    current_battle_state
-                )
-                if not opponent_possible_moves:  # Opponent is trapped or has no moves
-                    next_battle_state = self._simulate_one_turn_local(
-                        current_battle_state, p_order, None
-                    )
-                    eval_score = self._minimax_score(
-                        next_battle_state,
-                        depth + 1,
-                        False,
-                        max_depth,
-                        alpha,
-                        beta,
-                        node_idx_ref,
-                    )
-                    current_worst_outcome_for_player = eval_score
-
-                else:
-                    for o_action_obj in opponent_possible_moves:
-                        o_order = self.create_order(
-                            o_action_obj
-                        )  # Opponent orders are created normally
-                        next_battle_state = self._simulate_one_turn_local(
-                            current_battle_state, p_order, o_order
-                        )
-                        eval_score = self._minimax_score(
-                            next_battle_state,
-                            depth + 1,
-                            False,
-                            max_depth,
-                            alpha,
-                            beta,
-                            node_idx_ref,
-                        )
-                        current_worst_outcome_for_player = min(
-                            current_worst_outcome_for_player, eval_score
-                        )
-                        # Beta for opponent's choice against this p_order (not strictly part of this node's alpha/beta, but for sub-search)
-
-                max_eval = max(max_eval, current_worst_outcome_for_player)
-                alpha = max(alpha, max_eval)
-                if beta <= alpha:
-                    break  # Beta cut-off
-            return max_eval
-
-        else:  # Minimizing player's turn (Opponent's turn)
-            min_eval = float("inf")
-            opponent_actions = self._get_opponent_possible_moves(current_battle_state)
-            if not opponent_actions:  # Opponent has no moves (e.g., Struggle)
-                if (
-                    current_battle_state.opponent_active_pokemon
-                    and current_battle_state.opponent_active_pokemon.must_struggle()
-                ):
-                    opponent_actions = [Move("struggle", self.genNum)]
-                else:  # Should not happen if pokemon not fainted or battle should end
-                    return self._evaluate_state(current_battle_state)
-
-            for o_action_obj in opponent_actions:
-                o_order = self.create_order(o_action_obj)
-
-                # Assume player will make a move to maximize their score
-                current_best_outcome_for_player = -float("inf")
-                player_possible_moves = current_battle_state.available_moves
-                if not player_possible_moves:  # Player is trapped or has no moves
-                    next_battle_state = self._simulate_one_turn_local(
-                        current_battle_state, None, o_order
-                    )
-                    eval_score = self._minimax_score(
-                        next_battle_state,
-                        depth + 1,
-                        True,
-                        max_depth,
-                        alpha,
-                        beta,
-                        node_idx_ref,
-                    )
-                    current_best_outcome_for_player = eval_score
-                else:
-                    for p_action_obj in player_possible_moves:
-                        p_order = self.create_order(p_action_obj)
-                        next_battle_state = self._simulate_one_turn_local(
-                            current_battle_state, p_order, o_order
-                        )
-                        eval_score = self._minimax_score(
-                            next_battle_state,
-                            depth + 1,
-                            True,
-                            max_depth,
-                            alpha,
-                            beta,
-                            node_idx_ref,
-                        )
-                        current_best_outcome_for_player = max(
-                            current_best_outcome_for_player, eval_score
-                        )
-                        # Alpha for player's choice against this o_order
-
-                min_eval = min(min_eval, current_best_outcome_for_player)
-                beta = min(beta, min_eval)
-                if beta <= alpha:
-                    break  # Alpha cut-off
-            return min_eval
 
     def _enrich_opponent_pokemon(self, battle: AbstractBattle):
         mon = battle.opponent_active_pokemon
@@ -406,95 +246,257 @@ class Pythia(Player):
             if data.get("tera"):
                 mon._terastallized_type = PokemonType.from_name(data["tera"][0]["name"])
 
-    def minimax(self, battle: AbstractBattle) -> Tuple[Optional[BattleOrder], int]:
+    def choose_best_action(
+        self, battle: AbstractBattle
+    ) -> Tuple[Optional[BattleOrder], int]:
         """
-        Chooses the best move for the current player using the Minimax algorithm.
-        Simulates 1v1 scenarios, does not consider switches.
-        A leaf node is where a Pokémon faints or max depth is reached.
+        Top-level function to choose the best action (move or switch) using Minimax.
+        It iterates through all possible actions and uses helper functions to evaluate them.
         """
-        # Create a backup of opponent's Pokémon data before enrichment
-        battle = deepcopy(battle)
-        self._enrich_opponent_pokemon(battle)
+        # Create a single, enriched copy of the battle state to be used for all simulations this turn.
+        sim_battle = deepcopy(battle)
+        self._enrich_opponent_pokemon(sim_battle)
 
-        max_depth = self.K
+        best_action_order = self.choose_random_move(battle)  # Default action
         node_idx_counter = {"count": 0}
-        best_action_order: Optional[BattleOrder] = None
 
-        max_overall_score = -float("inf")
-        initial_player_moves = battle.available_moves
+        # The alpha value for the root of our decision tree (a MAX node).
+        root_alpha = -float("inf")
 
-        # TODO: sort moves by more damage to prune more nodes, do it in _minimax_score too
-        for p_action_obj in initial_player_moves:
-            p_order = self.create_order(p_action_obj)
+        # 1. Evaluate staying in and using a move
+        if sim_battle.available_moves:
+            # Sort moves to check more promising ones first, potentially leading to more pruning.
+            # A simple heuristic is to check high-power moves first.
+            sorted_moves = sorted(
+                sim_battle.available_moves, key=lambda m: m.base_power, reverse=True
+            )
 
-            # For this p_order, what's the worst score the opponent can force on us?
-            # This means we simulate p_order against all opponent's responses,
-            # and for each resulting state, the opponent (minimizing player) starts their turn.
-            min_score_for_current_p_action = float("inf")
-
-            # TODO: enrich opponent pokemon
-            opponent_possible_moves = self._get_opponent_possible_moves(battle)
-
-            if not opponent_possible_moves:  # Opponent is trapped or has no moves
-                # Simulate only player's move, then it's opponent's turn (minimizer) at depth 1
-                sim_after_p_order_only_battle = self._simulate_one_turn_local(
-                    battle, p_order, None
+            for move in sorted_moves:
+                move_order = self.create_order(move)
+                cnt = node_idx_counter["count"]
+                score = self._get_move_value(
+                    sim_battle, move_order, root_alpha, node_idx_counter
                 )
-                current_action_score = self._minimax_score(
-                    sim_after_p_order_only_battle,
-                    1,  # Depth is 1 after first set of moves
-                    False,  # Opponent's turn (minimizer)
-                    max_depth,
-                    -float("inf"),
-                    float("inf"),
-                    node_idx_counter,
+
+                print(
+                    f"Evaluating move {move.id} with score {score} in {node_idx_counter['count'] - cnt} nodes"
                 )
-                min_score_for_current_p_action = current_action_score
-            else:
-                for o_action_obj in opponent_possible_moves:
-                    o_order = self.create_order(o_action_obj)  # Opponent order
+                if score > root_alpha:
+                    root_alpha = score
+                    best_action_order = move_order
 
-                    # Simulate both moves happening in this turn
-                    sim_after_both_moves_battle = self._simulate_one_turn_local(
-                        battle, p_order, o_order
-                    )
+        # 2. Evaluate switching to a benched Pokémon
+        if sim_battle.available_switches:
+            for pokemon in sim_battle.available_switches:
+                switch_order = self.create_order(pokemon)
+                score = self._get_switch_value(
+                    sim_battle, switch_order, root_alpha, node_idx_counter
+                )
+                print(
+                    f"Evaluating switch to {pokemon.species} with score {score} in {node_idx_counter['count'] - cnt} nodes"
+                )
+                if score > root_alpha:
+                    root_alpha = score
+                    best_action_order = switch_order
 
-                    # After both moves, it's conceptually our (player's) turn again for the next depth level (depth 1)
-                    # However, the minimax structure is: max (min (max (...)))
-                    # So, after player makes p_order, and opponent makes o_order, the resulting state
-                    # is evaluated from the perspective of whose turn it is NEXT.
-                    # If depth in _minimax_score means "remaining depth", then it's max_depth-1.
-                    # If depth means "current depth", it starts at 0 (current state) or 1 (after first action).
-
-                    # The call should be: from sim_after_both_moves_battle, it's player's turn (maximizer) at depth 1.
-                    score = self._minimax_score(
-                        sim_after_both_moves_battle,
-                        1,  # Current depth is 1
-                        True,  # It's Player's (Maximizer's) turn from this new state
-                        max_depth,
-                        -float("inf"),
-                        float("inf"),  # Initial alpha beta for this sub-problem
-                        node_idx_counter,
-                    )
-                    min_score_for_current_p_action = min(
-                        min_score_for_current_p_action, score
-                    )
-
-            if min_score_for_current_p_action > max_overall_score:
-                max_overall_score = min_score_for_current_p_action
-                best_action_order = p_order
-
-            print(p_action_obj, min_score_for_current_p_action)
-
-        if (
-            best_action_order is None and initial_player_moves
-        ):  # Should pick one if moves were available
-            best_action_order = self.create_order(
-                initial_player_moves[0]
-            )  # Fallback to first available move
-
-        print(f"explored {node_idx_counter["count"]} nodes")
         return best_action_order, node_idx_counter["count"]
+
+    def _get_move_value(
+        self,
+        battle_state: AbstractBattle,
+        move_order: BattleOrder,
+        root_alpha: float,
+        node_idx_counter: dict,
+    ) -> float:
+        """
+        Calculates the Minimax value of performing a specific move.
+        This function represents a MINIMIZER node (it finds the best opponent response).
+        """
+        min_score_for_move = float("inf")
+        opponent_moves = self._get_opponent_possible_moves(battle_state)
+
+        if not opponent_moves:  # Handle case where opponent is trapped
+            next_state = self._simulate_one_turn_local(battle_state, move_order, None)
+            return self._minimax_score(
+                next_state,
+                1,
+                True,
+                self.K,
+                root_alpha,
+                min_score_for_move,
+                node_idx_counter,
+            )
+
+        for opp_move in opponent_moves:
+            opp_order = self.create_order(opp_move)
+            next_state = self._simulate_one_turn_local(
+                battle_state, move_order, opp_order
+            )
+
+            # After both Pokémon move, it's our turn again in the next state (Maximizer)
+            score = self._minimax_score(
+                next_state,
+                1,
+                True,
+                self.K,
+                root_alpha,
+                min_score_for_move,
+                node_idx_counter,
+            )
+
+            min_score_for_move = min(min_score_for_move, score)
+
+            # Pruning: If we find an opponent move that leads to a score worse for us
+            # than a score we're already guaranteed from a different top-level action,
+            # we don't need to check the opponent's other moves for this branch.
+            if min_score_for_move <= root_alpha:
+                return -float(
+                    "inf"
+                )  # Return a value that ensures this branch is not chosen
+
+        return min_score_for_move
+
+    def _get_switch_value(
+        self,
+        battle_state: AbstractBattle,
+        switch_order: BattleOrder,
+        root_alpha: float,
+        node_idx_counter: dict,
+    ) -> float:
+        """
+        Calculates the Minimax value of performing a switch.
+        This involves the opponent getting a free attack on the incoming Pokémon.
+        """
+        min_score_for_switch = float("inf")
+        opponent_moves = self._get_opponent_possible_moves(battle_state)
+
+        if not opponent_moves:  # Handle case where opponent is trapped
+            next_state = self._simulate_one_turn_local(battle_state, switch_order, None)
+            # After we switch, it's our new Pokémon's turn to act (Maximizer)
+            return self._minimax_score(
+                next_state,
+                1,
+                True,
+                self.K,
+                root_alpha,
+                min_score_for_switch,
+                node_idx_counter,
+            )
+
+        for opp_move in opponent_moves:
+            opp_order = self.create_order(opp_move)
+            state_after_switch = self._simulate_one_turn_local(
+                battle_state, switch_order, opp_order
+            )
+
+            # After we switch and they attack, it's our new active's turn (Maximizer)
+            score = self._minimax_score(
+                state_after_switch,
+                1,
+                True,
+                self.K,
+                root_alpha,
+                min_score_for_switch,
+                node_idx_counter,
+            )
+
+            min_score_for_switch = min(min_score_for_switch, score)
+
+            if min_score_for_switch <= root_alpha:
+                return -float("inf")  # Prune this branch
+
+        return min_score_for_switch
+
+    def _minimax_score(
+        self,
+        current_battle_state: AbstractBattle,
+        depth: int,
+        is_maximizing_player: bool,
+        max_depth: int,
+        alpha: float,
+        beta: float,
+        node_idx_ref: Dict,
+    ) -> int:
+        """
+        The core recursive Minimax function. It explores the game tree from a given state.
+        This function remains largely the same as the previous optimized version.
+        """
+        node_idx_ref["count"] += 1
+
+        if depth == max_depth or current_battle_state.finished:
+            return self._evaluate_state(current_battle_state)
+
+        if is_maximizing_player:
+            max_eval = -float("inf")
+            # Here we need to check both moves and switches as options
+            # For simplicity in this example, we assume we only evaluate moves from this point on
+            # A more complex agent could evaluate switches at any depth.
+            player_actions = current_battle_state.available_moves
+            if not player_actions:
+                return self._evaluate_state(current_battle_state)  # End of this path
+
+            for p_action_obj in player_actions:
+                # Recursively find the value of this move
+                # This requires a "get_move_value"-like logic inside the recursion
+                # This shows the complexity can grow. For now, let's keep the logic simple:
+                # For simplicity, this recursive step will only consider moves vs moves.
+                eval_for_move = self._get_move_value(
+                    current_battle_state,
+                    self.create_order(p_action_obj),
+                    alpha,
+                    node_idx_ref,
+                )
+                max_eval = max(max_eval, eval_for_move)
+                alpha = max(alpha, max_eval)
+                if beta <= alpha:
+                    break
+            return max_eval
+
+        else:  # Minimizing player
+            min_eval = float("inf")
+            opponent_actions = self._get_opponent_possible_moves(current_battle_state)
+            if not opponent_actions:
+                return self._evaluate_state(current_battle_state)
+
+            for o_action_obj in opponent_actions:
+                # This would be the "get_opponent_move_value" logic
+                # We assume player will respond optimally to the opponent's move
+                eval_for_opp_move = self._get_player_response_value(
+                    current_battle_state,
+                    self.create_order(o_action_obj),
+                    beta,
+                    node_idx_ref,
+                )
+                min_eval = min(min_eval, eval_for_opp_move)
+                beta = min(beta, min_eval)
+                if beta <= alpha:
+                    break
+            return min_eval
+
+    # NOTE: The _minimax_score function gets more complex if it needs to handle all actions recursively.
+    # The above implementation is a simplification where the deep recursion only considers move vs. move scenarios.
+    # The following are placeholder helpers to illustrate the full recursive structure.
+
+    def _get_player_response_value(
+        self, battle_state, opp_order, beta, node_idx_counter
+    ):
+        max_score = -float("inf")
+        player_moves = battle_state.available_moves
+        if not player_moves:
+            next_state = self._simulate_one_turn_local(battle_state, None, opp_order)
+            return self._minimax_score(
+                next_state, 1, False, self.K, max_score, beta, node_idx_counter
+            )
+        for p_move in player_moves:
+            p_order = self.create_order(p_move)
+            next_state = self._simulate_one_turn_local(battle_state, p_order, opp_order)
+            score = self._minimax_score(
+                next_state, 1, False, self.K, max_score, beta, node_idx_counter
+            )
+            max_score = max(max_score, score)
+            if beta <= max_score:  # This alpha check is against the parent's beta
+                break
+        return max_score
 
     def choose_max_damage_move(self, battle: Battle) -> BattleOrder:
         if battle.available_moves:
