@@ -10,8 +10,14 @@ from common import PNUMBER1
 from poke_env.data.gen_data import GenData
 from poke_env.environment.abstract_battle import AbstractBattle
 from poke_env.environment.battle import Battle
+from poke_env.environment.effect import Effect
+from poke_env.environment.field import Field
 from poke_env.environment.move import Move
+from poke_env.environment.move_category import MoveCategory
+from poke_env.environment.pokemon import Pokemon
 from poke_env.environment.pokemon_type import PokemonType
+from poke_env.environment.side_condition import SideCondition
+from poke_env.environment.status import Status
 from poke_env.player.gpt_player import GPTPlayer
 from poke_env.player.llama_player import LLAMAPlayer
 from poke_env.player.local_simulation import LocalSim
@@ -97,6 +103,58 @@ class Pythia(Player):
         self.total_choose_move_time = 0
         self.total_explored_nodes = 0
 
+        # -- Constants for battle state evaluation
+        self.POKEMON_ALIVE = 30.0
+        self.POKEMON_HP = 100.0
+        self.USED_TERA = -75.0
+
+        self.POKEMON_ATTACK_BOOST = 30.0
+        self.POKEMON_DEFENSE_BOOST = 15.0
+        self.POKEMON_SPECIAL_ATTACK_BOOST = 30.0
+        self.POKEMON_SPECIAL_DEFENSE_BOOST = 15.0
+        self.POKEMON_SPEED_BOOST = 30.0
+
+        self.BOOST_MULTIPLIERS = {
+            6: 3.3,
+            5: 3.15,
+            4: 3.0,
+            3: 2.5,
+            2: 2.0,
+            1: 1.0,
+            0: 0.0,
+            -1: -1.0,
+            -2: -2.0,
+            -3: -2.5,
+            -4: -3.0,
+            -5: -3.15,
+            -6: -3.3,
+        }
+
+        self.POKEMON_FROZEN = -40.0
+        self.POKEMON_ASLEEP = -25.0
+        self.POKEMON_PARALYZED = -25.0
+        self.POKEMON_TOXIC = -30.0
+        self.POKEMON_POISONED = -10.0
+        self.POKEMON_BURNED = -25.0
+
+        self.LEECH_SEED = -30.0
+        self.SUBSTITUTE = 40.0
+        self.CONFUSION = -20.0
+
+        self.REFLECT = 20.0
+        self.LIGHT_SCREEN = 20.0
+        self.AURORA_VEIL = 40.0
+        self.SAFEGUARD = 5.0
+        self.TAILWIND = 7.0
+        self.HEALING_WISH = 30.0
+
+        self.STEALTH_ROCK = -10.0
+        self.SPIKES = -7.0
+        self.TOXIC_SPIKES = -7.0
+        self.STICKY_WEB = -25.0
+
+    # ----
+
     def choose_move(self, battle: AbstractBattle):
         try:
             start_time = time.time()
@@ -140,17 +198,169 @@ class Pythia(Player):
             else:
                 return BattleOrder(battle.available_switches[0])
 
-    # TODO: make it more complex
-    def _evaluate_state(self, battle_state: AbstractBattle) -> float:
-        """
-        Evaluates the current battle state from the perspective of the player.
-        Score = player's active Pokémon HP - opponent's active Pokémon HP.
-        """
-        score = battle_state._team_size["p1"] - battle_state._team_size["p2"]
-        for pokemon in battle_state.team.values():
-            score = score - 1 + pokemon.current_hp_fraction
-        for pokemon in battle_state.opponent_team.values():
-            score = score + 1 - pokemon.current_hp_fraction
+    def _evaluate_state(self, battle: AbstractBattle) -> float:
+        score = 0.0
+
+        # TODO: it is for debugging purposes, remove it later
+        dict_of_values = {
+            "p1": dict(),
+            "p2": dict(),
+        }
+
+        # --- Player's Side Evaluation ---
+        if any(p.terastallized for p in battle.team.values()):
+            score += self.USED_TERA
+
+        for pokemon in battle.team.values():
+            if pokemon.fainted:
+                continue
+
+            pkmn_score = self.POKEMON_ALIVE + (
+                self.POKEMON_HP * pokemon.current_hp_fraction
+            )
+
+            # Status Effects
+            if pokemon.status == Status.BRN:
+                pkmn_score += self._evaluate_burn_score(pokemon)
+            elif pokemon.status == Status.FRZ:
+                pkmn_score += self.POKEMON_FROZEN
+            elif pokemon.status == Status.SLP:
+                pkmn_score += self.POKEMON_ASLEEP
+            elif pokemon.status == Status.PAR:
+                pkmn_score += self.POKEMON_PARALYZED
+            elif pokemon.status == Status.TOX:
+                pkmn_score += self._evaluate_poison_score(pokemon, self.POKEMON_TOXIC)
+            elif pokemon.status == Status.PSN:
+                pkmn_score += self._evaluate_poison_score(
+                    pokemon, self.POKEMON_POISONED
+                )
+
+            if pokemon.item:
+                pkmn_score += 10.0
+
+            pkmn_score += self._evaluate_hazards_score(pokemon, battle)
+
+            # Active Pokémon Effects
+            if pokemon.active:
+                # Boosts
+                for stat, value in pokemon.boosts.items():
+                    multiplier = self._get_boost_multiplier(value)
+                    if stat in ["atk", "spa", "spe"]:
+                        pkmn_score += multiplier * self.POKEMON_ATTACK_BOOST
+                    elif stat in ["def", "spd"]:
+                        pkmn_score += multiplier * self.POKEMON_DEFENSE_BOOST
+
+                # Volatile Statuses
+                if Effect.LEECH_SEED in pokemon.effects:
+                    pkmn_score += self.LEECH_SEED
+                if Effect.SUBSTITUTE in pokemon.effects:
+                    pkmn_score += self.SUBSTITUTE
+                if Effect.CONFUSION in pokemon.effects:
+                    pkmn_score += self.CONFUSION
+
+            dict_of_values["p1"][pokemon.species] = pkmn_score
+            score += pkmn_score
+
+        # --- Opponent's Side Evaluation (scores are subtracted) ---
+        if any(p.terastallized for p in battle.opponent_team.values()):
+            score -= self.USED_TERA
+
+        # TODO: add values for unseen pokemon
+        for pokemon in battle.opponent_team.values():
+            if pokemon.fainted:
+                continue
+
+            pkmn_score = self.POKEMON_ALIVE + (
+                self.POKEMON_HP * pokemon.current_hp_fraction
+            )
+
+            # Status Effects
+            if pokemon.status == Status.BRN:
+                pkmn_score += self._evaluate_burn_score(pokemon)
+            elif pokemon.status == Status.FRZ:
+                pkmn_score += self.POKEMON_FROZEN
+            elif pokemon.status == Status.SLP:
+                pkmn_score += self.POKEMON_ASLEEP
+            elif pokemon.status == Status.PAR:
+                pkmn_score += self.POKEMON_PARALYZED
+            elif pokemon.status == Status.TOX:
+                pkmn_score += self._evaluate_poison_score(pokemon, self.POKEMON_TOXIC)
+            elif pokemon.status == Status.PSN:
+                pkmn_score += self._evaluate_poison_score(
+                    pokemon, self.POKEMON_POISONED
+                )
+
+            if pokemon.item:
+                pkmn_score += 10.0
+
+            pkmn_score += self._evaluate_hazards_score(pokemon, battle)
+
+            if pokemon.active:
+                # Boosts
+                for stat, value in pokemon.boosts.items():
+                    multiplier = self._get_boost_multiplier(value)
+                    if stat in ["atk", "spa", "spe"]:
+                        pkmn_score += multiplier * self.POKEMON_ATTACK_BOOST
+                    elif stat in ["def", "spd"]:
+                        pkmn_score += multiplier * self.POKEMON_DEFENSE_BOOST
+                # Volatile Statuses
+                if Effect.LEECH_SEED in pokemon.effects:
+                    pkmn_score += self.LEECH_SEED
+                if Effect.SUBSTITUTE in pokemon.effects:
+                    pkmn_score += self.SUBSTITUTE
+                if Effect.CONFUSION in pokemon.effects:
+                    pkmn_score += self.CONFUSION
+
+            dict_of_values["p2"][pokemon.species] = pkmn_score
+            score -= pkmn_score
+
+        # --- Team-Wide Side Conditions & Hazards ---
+        for sc, val in battle.side_conditions.items():
+            if sc == SideCondition.REFLECT:
+                score += self.REFLECT
+            elif sc == SideCondition.LIGHT_SCREEN:
+                score += self.LIGHT_SCREEN
+            elif sc == SideCondition.AURORA_VEIL:
+                score += self.AURORA_VEIL
+            elif sc == SideCondition.SAFEGUARD:
+                score += self.SAFEGUARD
+            elif sc == SideCondition.TAILWIND:
+                score += self.TAILWIND
+            # Hazards affect the whole team, so we evaluate their potential impact
+            elif sc == SideCondition.STEALTH_ROCK:
+                score += self.STEALTH_ROCK * len(
+                    [p for p in battle.team.values() if not p.fainted]
+                )
+            elif sc == SideCondition.SPIKES:
+                score += (
+                    self.SPIKES
+                    * val
+                    * len([p for p in battle.team.values() if not p.fainted])
+                )
+            # TODO: add other conditions
+
+        for sc, val in battle.opponent_side_conditions.items():
+            if sc == SideCondition.REFLECT:
+                score -= self.REFLECT
+            elif sc == SideCondition.LIGHT_SCREEN:
+                score -= self.LIGHT_SCREEN
+            elif sc == SideCondition.AURORA_VEIL:
+                score -= self.AURORA_VEIL
+            elif sc == SideCondition.SAFEGUARD:
+                score -= self.SAFEGUARD
+            elif sc == SideCondition.TAILWIND:
+                score -= self.TAILWIND
+            elif sc == SideCondition.STEALTH_ROCK:
+                score -= self.STEALTH_ROCK * len(
+                    [p for p in battle.opponent_team.values() if not p.fainted]
+                )
+            elif sc == SideCondition.SPIKES:
+                score -= (
+                    self.SPIKES
+                    * val
+                    * len([p for p in battle.opponent_team.values() if not p.fainted])
+                )
+
         return score
 
     def _get_opponent_possible_moves(self, battle_state: AbstractBattle) -> List[Move]:
@@ -186,51 +396,67 @@ class Pythia(Player):
             format=self.format,  # class attribute
             prompt_translate=self.prompt_translate,  # class attribute
         )
-
         # TODO: check if we can do it better with smogon calculator
         local_sim.step(player_order, opponent_order)
-
         return local_sim.battle  # Return the new battle state
 
-    def _enrich_opponent_pokemon(self, battle: AbstractBattle):
-        mon = battle.opponent_active_pokemon
-        if mon.species not in self.pokedex:
-            return
-        data = self.pokedex[mon.species]
+    def _enrich_opponent_team(self, battle: AbstractBattle):
+        actual_opponent_team = set()
+        for mon in battle.opponent_team.values():
+            actual_opponent_team.add(mon.species)
 
-        if len(mon.moves) < 4:
-            moves = []
-            for key in mon.moves:
-                moves.append(mon.moves[key].id)
+        for previewed_mon in battle._teampreview_opponent_team:
+            if previewed_mon.species not in actual_opponent_team:
+                mon = Pokemon(gen=self.genNum, species=previewed_mon.species)
+                mon.set_hp_status("100/100")
+                # TODO: in the opponent team the names are not normalized
+                # so for example we have "p2: Gengar" instead of "p2: gengar"
+                # maybe with should reverse the normalization
+                battle.opponent_team["p2: " + mon.species] = mon
 
-            for possible_move in data.get("moves", []):
-                possible_move = (
-                    possible_move["name"].lower().replace(" ", "").replace("-", "")
-                )
-                if possible_move not in moves:
-                    mon._add_move(possible_move)
-                    moves.append(possible_move)
-                if len(moves) == 4:
-                    break
+        for mon in battle.opponent_team.values():
+            if mon.species not in self.pokedex:
+                return
+            data = self.pokedex[mon.species]
 
-        if mon.ability is None:
-            if data.get("abilities"):
-                mon.ability = (
-                    data["abilities"][0]["name"]
-                    .lower()
-                    .replace(" ", "")
-                    .replace("-", "")
-                )
+            if len(mon.moves) < 4:
+                moves = []
+                for key in mon.moves:
+                    moves.append(mon.moves[key].id)
 
-        if mon.item == "unknown_item":
-            if data.get("items"):
-                mon.item = (
-                    data["items"][0]["name"].lower().replace(" ", "").replace("-", "")
-                )
+                for possible_move in data.get("moves", []):
+                    possible_move = (
+                        possible_move["name"].lower().replace(" ", "").replace("-", "")
+                    )
+                    if possible_move not in moves:
+                        mon._add_move(possible_move)
+                        moves.append(possible_move)
+                    if len(moves) == 4:
+                        break
 
-        if mon._terastallized_type is None:
-            if data.get("tera"):
-                mon._terastallized_type = PokemonType.from_name(data["tera"][0]["name"])
+            if mon.ability is None:
+                if data.get("abilities"):
+                    mon.ability = (
+                        data["abilities"][0]["name"]
+                        .lower()
+                        .replace(" ", "")
+                        .replace("-", "")
+                    )
+
+            if mon.item == "unknown_item":
+                if data.get("items"):
+                    mon.item = (
+                        data["items"][0]["name"]
+                        .lower()
+                        .replace(" ", "")
+                        .replace("-", "")
+                    )
+
+            if mon._terastallized_type is None:
+                if data.get("tera"):
+                    mon._terastallized_type = PokemonType.from_name(
+                        data["tera"][0]["name"]
+                    )
 
     def choose_best_action(
         self, battle: AbstractBattle
@@ -241,7 +467,8 @@ class Pythia(Player):
         """
         # Create a single, enriched copy of the battle state to be used for all simulations this turn.
         sim_battle = deepcopy(battle)
-        self._enrich_opponent_pokemon(sim_battle)
+
+        self._enrich_opponent_team(sim_battle)
 
         best_action_order = self.choose_random_move(battle)  # Default action
         node_idx_counter = {"count": 0}
@@ -494,3 +721,101 @@ class Pythia(Player):
             )
             return self.create_order(best_move)
         return self.choose_random_move(battle)
+
+    def _get_boost_multiplier(self, boost_level: int) -> float:
+        return self.BOOST_MULTIPLIERS.get(boost_level, 0.0)
+
+    def _evaluate_poison_score(self, pokemon: Pokemon, base_score: float) -> float:
+        # In poke-env, abilities are strings. We use 'in' for abilities like "Poison Heal"
+        ability = pokemon.ability or ""
+        if "poisonheal" in ability:
+            return 15.0
+        if any(
+            a in ability
+            for a in ["guts", "marvelscale", "quickfeet", "toxicboost", "magicguard"]
+        ):
+            return 10.0
+        return base_score
+
+    def _evaluate_burn_score(self, pokemon: Pokemon) -> float:
+        ability = pokemon.ability or ""
+        if any(a in ability for a in ["guts", "marvelscale", "quickfeet"]):
+            return -2.0 * self.POKEMON_BURNED
+
+        # Penalize physical attackers more heavily for burn
+        physical_move_count = 0
+        for move in pokemon.moves.values():
+            if move.category == MoveCategory.PHYSICAL:
+                physical_move_count += 1
+
+        # This is a simplification. The Rust code compares calculated stats.
+        # We check the number of physical moves as a proxy.
+        return (physical_move_count / 4.0) * self.POKEMON_BURNED
+
+    def _is_grounded(self, mon: Pokemon, battle: AbstractBattle):
+        if Field.GRAVITY in battle.fields:
+            return True
+        elif mon.item == "ironball":
+            return True
+        elif mon.ability == "levitate":
+            return False
+        elif mon.ability is None and "levitate" in mon.possible_abilities:
+            return False
+        elif mon.item == "airballoon":
+            return False
+        elif mon.type_1 == PokemonType.FLYING or mon.type_2 == PokemonType.FLYING:
+            return False
+        elif Effect.MAGNET_RISE in mon.effects:
+            return False
+        return True
+
+    def _evaluate_hazards_score(
+        self, pokemon: Pokemon, battle: AbstractBattle
+    ) -> float:
+        """
+        Calculates the score penalty from entry hazards for a single Pokémon.
+        This version correctly uses battle.is_grounded().
+        """
+        # Determine which side's conditions to check
+        if pokemon in battle.team.values():
+            side_conditions = battle.side_conditions
+        elif pokemon in battle.opponent_team.values():
+            side_conditions = battle.opponent_side_conditions
+        else:
+            return 0.0  # Should not happen
+
+        score = 0.0
+
+        # Use the battle's method to correctly determine if the Pokemon is grounded
+        is_grounded = self._is_grounded(pokemon, battle)
+
+        # Heavy-Duty Boots negates damage-dealing entry hazards
+        if pokemon.item == "heavydutyboots":
+            if is_grounded and SideCondition.STICKY_WEB in side_conditions:
+                score += self.STICKY_WEB
+            return score
+
+        # Magic Guard negates all hazard damage
+        if pokemon.ability == "magicguard":
+            return score
+
+        # Calculate hazard damage
+        if SideCondition.STEALTH_ROCK in side_conditions:
+            # Stealth Rock damage depends on the Pokemon's type effectiveness against Rock
+            rock_multiplier = PokemonType.ROCK.damage_multiplier(
+                pokemon.type_1, pokemon.type_2, type_chart=self.gen.type_chart
+            )
+            # The base penalty is for 1x effective, scaled by the multiplier
+            score += self.STEALTH_ROCK * rock_multiplier
+
+        if is_grounded:
+            if SideCondition.SPIKES in side_conditions:
+                # Assumes a simple scaling with layers. 1 layer = -7.0
+                score += side_conditions.get(SideCondition.SPIKES, 0) * self.SPIKES
+            if SideCondition.TOXIC_SPIKES in side_conditions:
+                # This can be expanded to check for poison/steel types that remove it
+                score += self.TOXIC_SPIKES
+            if SideCondition.STICKY_WEB in side_conditions:
+                score += self.STICKY_WEB
+
+        return score
