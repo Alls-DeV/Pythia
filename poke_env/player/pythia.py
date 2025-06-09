@@ -254,7 +254,9 @@ class Pythia(Player):
             # Sort moves to check more promising ones first, potentially leading to more pruning.
             # A simple heuristic is to check high-power moves first.
             sorted_moves = sorted(
-                sim_battle.available_moves, key=lambda m: m.base_power, reverse=True
+                sim_battle.available_moves,
+                key=lambda m: m.base_power * m.accuracy,
+                reverse=True,
             )
 
             for move in sorted_moves:
@@ -275,6 +277,7 @@ class Pythia(Player):
         if sim_battle.available_switches:
             for pokemon in sim_battle.available_switches:
                 switch_order = self.create_order(pokemon)
+                cnt = node_idx_counter["count"]
                 score = self._get_switch_value(
                     sim_battle, switch_order, root_alpha, node_idx_counter
                 )
