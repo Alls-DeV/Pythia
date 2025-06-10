@@ -158,7 +158,6 @@ class Pythia(Player):
     def choose_move(self, battle: AbstractBattle):
         try:
             start_time = time.time()
-            # TODO: probably explored_nodes will be useless
             action, explored_nodes = self.choose_best_action(battle)
             end_time = time.time()
             print(
